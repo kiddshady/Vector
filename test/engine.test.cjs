@@ -154,9 +154,59 @@ const mkRun = (pipeline, id = 'r-test') =>
   const w = await tools.execute('write_file', { path: 'nota.txt', content: 'hola mundo' }, toolCtx);
   ok('write_file escribe', w.ok, w.output);
   const r = await tools.execute('read_file', { path: 'nota.txt' }, toolCtx);
-  ok('read_file lee lo escrito', r.ok && r.output === 'hola mundo', r.output);
+  ok('read_file lee lo escrito y numera la línea', r.ok && r.output === '     1  hola mundo', r.output);
   const ls = await tools.execute('list_dir', { path: '.' }, toolCtx);
   ok('list_dir lista', ls.ok && ls.output.includes('nota.txt'), ls.output);
+
+  /* Un archivo que no entra en una respuesta tiene que poder leerse ENTERO a
+     fuerza de `offset`. Es la regresión de la revisión que opinó sobre las
+     primeras 334 líneas de un main.js de 6087 porque no tenía cómo pedir el
+     resto: la tool cortaba y decía cuánto faltaba, pero no con qué seguir. */
+  const N = 4000;
+  const grande = Array.from({ length: N }, (_, i) => `linea ${i + 1} con relleno para ocupar lugar`).join('\n');
+  fs.writeFileSync(pathMod.join(WS, 'grande.txt'), grande, 'utf8');
+
+  const t1 = await tools.execute('read_file', { path: 'grande.txt' }, toolCtx);
+  ok('un archivo grande se corta pero dice con qué offset seguir',
+    t1.ok && /Cortado en la línea \d+ de 4000/.test(t1.output) && t1.output.includes('offset:'),
+    t1.output.slice(-140));
+
+  // Encadenar los offsets que la propia tool sugiere tiene que cubrir el archivo
+  // entero, sin saltear ni repetir una línea. Si esto falla, la tool volvió a ser
+  // un callejón sin salida aunque el corte "avise".
+  const vistas = [];
+  let sig = 1;
+  let vueltas = 0;
+  while (sig && vueltas++ < 50) {
+    const res = await tools.execute('read_file', { path: 'grande.txt', offset: sig }, toolCtx);
+    if (!res.ok) break;
+    for (const fila of res.output.split('\n')) {
+      const num = /^\s*(\d+)\s{2}/.exec(fila);
+      if (num) vistas.push(Number(num[1]));
+    }
+    const corte = /Cortado en la línea (\d+) de/.exec(res.output);
+    sig = corte ? Number(corte[1]) + 1 : 0;
+  }
+  ok('encadenando offsets se llega al final del archivo',
+    vistas.length === N && vistas[0] === 1 && vistas[N - 1] === N,
+    `${vistas.length} de ${N}, de ${vistas[0]} a ${vistas[vistas.length - 1]} en ${vueltas} lecturas`);
+  ok('sin líneas repetidas ni salteadas', new Set(vistas).size === N);
+
+  const final = await tools.execute('read_file', { path: 'grande.txt', offset: N - 5 }, toolCtx);
+  ok('el último tramo avisa que es el final', final.output.includes('Fin del archivo'), final.output.slice(-80));
+  const pasado = await tools.execute('read_file', { path: 'grande.txt', offset: 99999 }, toolCtx);
+  ok('un offset más allá del final no explota', pasado.ok && pasado.output.includes('no hay nada más'), pasado.output);
+  const acotado = await tools.execute('read_file', { path: 'grande.txt', offset: 10, limit: 3 }, toolCtx);
+  ok('limit acota el tramo',
+    acotado.output.split('\n').filter((l) => /^\s*\d+\s{2}/.test(l)).length === 3, acotado.output);
+
+  // Una sola línea más larga que todo el presupuesto (un bundle minificado) se
+  // recorta ella sola, sin arrastrar el tramo ni la numeración.
+  fs.writeFileSync(pathMod.join(WS, 'minificado.js'), `${'x'.repeat(60000)}\nfinal`, 'utf8');
+  const mini = await tools.execute('read_file', { path: 'minificado.js' }, toolCtx);
+  ok('una línea gigante se recorta sin romper el tramo',
+    mini.ok && mini.output.startsWith('     1  ') && mini.output.includes('línea recortada')
+    && mini.output.length < 25000, `${mini.output.length} caracteres`);
 
   const bad = await tools.execute('read_file', { path: '../../../secreto.txt' }, toolCtx);
   ok('una tool no sale de la carpeta', !bad.ok && bad.output.includes('fuera de la carpeta'), bad.output);

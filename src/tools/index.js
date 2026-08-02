@@ -20,13 +20,65 @@ const path = require('path');
 const { exec } = require('child_process');
 
 const MAX_OUTPUT = 20000;      // lo que devuelve una tool al modelo, en caracteres
-const MAX_FILE = 512 * 1024;
+const MAX_FILE = 8 * 1024 * 1024;
 
 /** Recorta y avisa: un archivo de 4 MB adentro del contexto es plata quemada. */
 function clip(text, limit = MAX_OUTPUT) {
   const s = String(text ?? '');
   if (s.length <= limit) return s;
   return `${s.slice(0, limit)}\n\n[… recortado, ${s.length - limit} caracteres más]`;
+}
+
+/**
+ * Un tramo de líneas NUMERADAS, más el cartel de cómo seguir si quedó archivo
+ * afuera. Las dos mitades salen del mismo caso real: una revisión de un main.js
+ * de 6087 líneas que opinó sobre las primeras 334 y citó los números errados.
+ *
+ * Numeradas, porque si no el modelo las cuenta a ojo y erra por decenas — y un
+ * hallazgo con la línea equivocada no se puede ir a mirar, que es todo lo que
+ * se le pide a un informe.
+ *
+ * Y con el cartel, porque un `[… recortado]` a secas es un callejón sin salida:
+ * el modelo sabe que falta pero no cómo pedirlo, así que vuelve a llamar la tool
+ * igual que antes y recibe lo mismo. Acá el texto dice el número exacto con el
+ * que sigue. El corte es por PRESUPUESTO de salida, no por un tope de líneas
+ * fijo: entra lo que entre, y `last` siempre es la última línea REAL emitida.
+ */
+function sliceLines(text, { from = 1, limit = 0, rel = '' } = {}) {
+  const lines = String(text).split('\n');
+  if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop(); // el \n final no es una línea
+  const total = lines.length;
+
+  const desde = Math.max(1, Math.floor(Number(from) || 1));
+  if (desde > total) {
+    return `El archivo tiene ${total} línea(s) y pediste desde la ${desde}: no hay nada más para leer.`;
+  }
+  const cuantas = Math.max(0, Math.floor(Number(limit) || 0));
+  const tope = cuantas ? Math.min(total, desde + cuantas - 1) : total;
+
+  // Margen para el cartel del final; y una línea sola más larga que todo el
+  // presupuesto (un bundle minificado) se recorta ella, no el tramo entero.
+  const budget = MAX_OUTPUT - 300;
+  const filas = [];
+  let usado = 0;
+  let last = desde - 1;
+  for (let i = desde; i <= tope; i++) {
+    const cruda = lines[i - 1].replace(/\r$/, '');
+    const texto = cruda.length > budget ? `${cruda.slice(0, budget)} [… línea recortada]` : cruda;
+    const fila = `${String(i).padStart(6)}  ${texto}`;
+    if (filas.length && usado + fila.length + 1 > budget) break;
+    filas.push(fila);
+    usado += fila.length + 1;
+    last = i;
+  }
+
+  const cuerpo = filas.join('\n');
+  if (last < total) {
+    const ruta = rel ? `path: "${rel}", ` : '';
+    return `${cuerpo}\n\n[Cortado en la línea ${last} de ${total}. Seguí con read_file(${ruta}offset: ${last + 1}) hasta llegar al final.]`;
+  }
+  if (desde > 1) return `${cuerpo}\n\n[Fin del archivo — línea ${total} de ${total}.]`;
+  return cuerpo;
 }
 
 /**
@@ -67,17 +119,23 @@ const TOOLS = {
     label: 'Leer archivo',
     icon: 'file',
     danger: false,
-    description: 'Lee un archivo de texto de la carpeta de trabajo y devuelve su contenido.',
+    description: 'Lee un archivo de texto de la carpeta de trabajo y devuelve sus líneas numeradas. Un archivo grande NO entra en una sola respuesta: se corta y te avisa en qué línea quedó, para que sigas con `offset` hasta el final. Citá siempre los números que devuelve esta herramienta, no los que contés vos.',
     parameters: {
       type: 'object',
-      properties: { path: { type: 'string', description: 'Ruta relativa a la carpeta de trabajo.' } },
+      properties: {
+        path: { type: 'string', description: 'Ruta relativa a la carpeta de trabajo.' },
+        offset: { type: 'integer', description: 'Línea desde la que empezar, contando desde 1. Por defecto 1.' },
+        limit: { type: 'integer', description: 'Cuántas líneas leer como máximo. Por defecto, todas las que entren en la respuesta.' },
+      },
       required: ['path'],
     },
-    async run({ path: rel }, ctx) {
+    async run({ path: rel, offset, limit }, ctx) {
       const file = safePath(ctx.workspace, rel);
       const stat = await fs.stat(file);
-      if (stat.size > MAX_FILE) throw new Error(`El archivo pesa ${Math.round(stat.size / 1024)} KB; el máximo es ${MAX_FILE / 1024} KB.`);
-      return clip(await fs.readFile(file, 'utf8'));
+      if (stat.size > MAX_FILE) {
+        throw new Error(`El archivo pesa ${Math.round(stat.size / 1024)} KB; el máximo es ${MAX_FILE / 1024 / 1024} MB.`);
+      }
+      return sliceLines(await fs.readFile(file, 'utf8'), { from: offset, limit, rel: String(rel || '') });
     },
   },
 
@@ -231,4 +289,4 @@ async function execute(name, args, ctx) {
   }
 }
 
-module.exports = { TOOLS, catalog, definitions, execute, allowedFor, safePath, clip };
+module.exports = { TOOLS, catalog, definitions, execute, allowedFor, safePath, clip, sliceLines };
