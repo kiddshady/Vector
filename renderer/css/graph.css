@@ -1,0 +1,300 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   VECTOR — grafo y línea de tiempo
+   El pipeline es el protagonista de la app, así que es la única superficie que
+   se permite ser grande y silenciosa: un lienzo hundido, una grilla de puntos
+   casi invisible, y los nodos flotando por elevación.
+
+   Las aristas son literalmente vectores: tienen dirección, y cuando el tramo
+   está vivo el guion VIAJA en el sentido del flujo. Es la animación que le da
+   nombre a la app.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.vc-canvas {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  background-color: var(--vc-sunken);
+  /* Grilla de puntos: presente pero al borde de lo perceptible. */
+  background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, .045) 1px, transparent 0);
+  background-size: 22px 22px;
+  box-shadow: inset 0 1px 0 var(--vc-line);
+  cursor: grab;
+}
+.vc-canvas.is-panning { cursor: grabbing; }
+.vc-canvas__stage {
+  position: relative;
+  width: 1500px;
+  height: 780px;
+  transform-origin: 0 0;
+  transition: transform var(--vc-t-4) var(--vc-ease);
+}
+
+/* Las aristas viven debajo de los nodos. */
+.vc-edges { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
+.vc-edge {
+  fill: none;
+  stroke: var(--vc-line-3);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  transition: stroke var(--vc-t-3) var(--vc-ease-soft), stroke-width var(--vc-t-2) var(--vc-ease-soft);
+}
+.vc-edge--done { stroke: rgba(255, 255, 255, .22); }
+.vc-edge--live {
+  stroke: var(--vc-accent);
+  stroke-width: 1.75;
+  stroke-dasharray: 5 7;
+  animation: vc-flow 900ms linear infinite;
+}
+.vc-edge--failed { stroke: var(--vc-danger); }
+.vc-edge--idle { stroke: var(--vc-line-2); stroke-dasharray: 3 5; }
+.vc-edge.is-dim { stroke: var(--vc-line); }
+/* La punta de flecha es un triángulo propio, no un <marker>: los markers no
+   heredan el color del path que los usa y terminás con flechas de otro tono. */
+.vc-arrow {
+  stroke: none;
+  fill: var(--vc-line-3);
+  transition: fill var(--vc-t-3) var(--vc-ease-soft);
+}
+.vc-arrow[data-state='done']   { fill: rgba(255, 255, 255, .22); }
+.vc-arrow[data-state='live']   { fill: var(--vc-accent); }
+.vc-arrow[data-state='failed'] { fill: var(--vc-danger); }
+.vc-arrow[data-state='idle']   { fill: var(--vc-line-2); }
+
+/* Etiqueta sobre una arista (la rama de una condición). */
+.vc-edgelabel {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 1px 6px;
+  border-radius: var(--vc-r-xs);
+  background: var(--vc-sunken);
+  box-shadow: var(--vc-hairline);
+  font-size: var(--vc-fs-10);
+  color: var(--vc-text-3);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* ── Nodo ─────────────────────────────────────────────────────────────────── */
+.vc-node {
+  position: absolute;
+  width: 190px;
+  padding: var(--vc-3);
+  border-radius: var(--vc-r-lg);
+  background: var(--vc-s2);
+  box-shadow: var(--vc-hairline), var(--vc-e2);
+  cursor: default;
+  overflow: hidden;
+  animation: vc-glide-in var(--vc-t-4) var(--vc-ease) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+  transition: var(--tr-surface);
+}
+.vc-node:hover {
+  background: var(--vc-s3);
+  box-shadow: inset 0 0 0 1px var(--vc-line-2), var(--vc-e3);
+  transform: translateY(-1px);
+}
+.vc-node.is-selected {
+  box-shadow: inset 0 0 0 1px var(--vc-line-3), 0 0 0 1px var(--vc-wash-2), var(--vc-e3);
+  background: var(--vc-s3);
+}
+/* Corriendo: el nodo se vuelve lo más claro de la pantalla. */
+.vc-node[data-state='running'] {
+  background: var(--vc-s3);
+  box-shadow: inset 0 0 0 1px var(--vc-line-3), var(--vc-e3);
+}
+.vc-node[data-state='failed'] { box-shadow: inset 0 0 0 1px var(--vc-danger-ring), var(--vc-e2); }
+/* Terminado: retrocede. No compite con lo que está pasando ahora. */
+.vc-node[data-state='done'] { opacity: .72; }
+.vc-node[data-state='done']:hover { opacity: 1; }
+.vc-node[data-state='skipped'] { opacity: .4; }
+
+.vc-node__head { display: flex; align-items: center; gap: var(--vc-2); }
+.vc-node__idx {
+  font-family: var(--vc-mono);
+  font-size: 10px;
+  color: var(--vc-text-4);
+  letter-spacing: 0;
+}
+.vc-node__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--vc-fs-12);
+  font-weight: var(--vc-w-medium);
+  color: var(--vc-text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.vc-node__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--vc-2);
+  margin-top: var(--vc-2);
+  font-size: var(--vc-fs-10);
+  color: var(--vc-text-4);
+}
+.vc-node__model {
+  font-family: var(--vc-mono);
+  font-size: 10px;
+  color: var(--vc-text-3);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.vc-node__meter { margin-top: var(--vc-2); }
+/* Puertos: los puntos de conexión. Aparecen con el hover del nodo. */
+.vc-node__port {
+  position: absolute;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  margin-top: -3.5px;
+  border-radius: 50%;
+  background: var(--vc-s4);
+  box-shadow: inset 0 0 0 1px var(--vc-line-3);
+  opacity: 0;
+  transition: opacity var(--vc-t-2) var(--vc-ease-soft), transform var(--vc-t-2) var(--vc-ease);
+}
+.vc-node__port--in  { left: -4px; }
+.vc-node__port--out { right: -4px; }
+.vc-node:hover .vc-node__port { opacity: 1; }
+.vc-node__port:hover { transform: scale(1.35); background: var(--vc-accent); }
+
+/* Grupo (fan-out): un marco punteado que abraza sus ramas. */
+.vc-group {
+  position: absolute;
+  border-radius: var(--vc-r-xl);
+  box-shadow: inset 0 0 0 1px var(--vc-line);
+  background: rgba(255, 255, 255, .012);
+  animation: vc-fade-in var(--vc-t-4) var(--vc-ease) both;
+}
+.vc-group__label {
+  position: absolute;
+  top: -9px;
+  left: var(--vc-4);
+  padding: 0 var(--vc-2);
+  background: var(--vc-sunken);
+  font-size: var(--vc-fs-10);
+  font-weight: var(--vc-w-medium);
+  letter-spacing: var(--vc-track-caps);
+  text-transform: uppercase;
+  color: var(--vc-text-4);
+}
+
+/* ── Controles flotantes del canvas ──────────────────────────────────────── */
+.vc-canvasbar {
+  position: absolute;
+  left: var(--vc-4);
+  bottom: var(--vc-4);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--vc-r-md);
+  background: rgba(20, 23, 27, .82);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--vc-hairline), var(--vc-e3);
+  z-index: 5;
+}
+.vc-canvasbar__zoom {
+  min-width: 42px;
+  text-align: center;
+  font-size: var(--vc-fs-10);
+  font-variant-numeric: tabular-nums;
+  color: var(--vc-text-3);
+}
+
+/* ── Línea de tiempo (corrida) ───────────────────────────────────────────────
+   Un gantt: cada paso ocupa su tramo real del tiempo total. De un vistazo se
+   ve quién tarda, quién esperó y dónde se rompió la cadena. */
+.vc-timeline { display: flex; flex-direction: column; gap: 2px; }
+.vc-tlrow {
+  display: grid;
+  grid-template-columns: 168px 1fr 66px;
+  align-items: center;
+  gap: var(--vc-3);
+  height: 30px;
+  padding: 0 var(--vc-2);
+  border-radius: var(--vc-r-sm);
+  cursor: default;
+  transition: background-color var(--vc-t-1) var(--vc-ease-soft);
+}
+.vc-tlrow:hover { background: var(--vc-wash-1); }
+.vc-tlrow.is-selected { background: var(--vc-wash-2); }
+.vc-tlrow__label { display: flex; align-items: center; gap: var(--vc-2); min-width: 0; font-size: var(--vc-fs-12); color: var(--vc-text-2); }
+.vc-tlrow__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vc-tlrow__track { position: relative; height: 100%; }
+.vc-tlrow__dur {
+  text-align: right;
+  font-family: var(--vc-mono);
+  font-size: 10.5px;
+  color: var(--vc-text-4);
+  font-variant-numeric: tabular-nums;
+}
+
+.vc-tlbar {
+  position: absolute;
+  top: 50%;
+  height: 6px;
+  margin-top: -3px;
+  left: var(--x, 0%);
+  width: var(--w, 0%);
+  min-width: 3px;
+  border-radius: var(--vc-r-pill);
+  background: var(--vc-line-3);
+  transform-origin: left;
+  animation: vc-bar-grow var(--vc-t-4) var(--vc-ease) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+  transition: background-color var(--vc-t-3) var(--vc-ease-soft);
+}
+@keyframes vc-bar-grow { from { transform: scaleX(0); opacity: 0 } to { transform: scaleX(1); opacity: 1 } }
+.vc-tlbar[data-state='done']    { background: rgba(255, 255, 255, .20); }
+.vc-tlbar[data-state='running'] {
+  background: var(--vc-accent);
+  box-shadow: 0 0 12px rgba(242, 244, 247, .18);
+}
+/* La punta viva del bar que sigue creciendo. */
+.vc-tlbar[data-state='running']::after {
+  content: '';
+  position: absolute;
+  right: -1px; top: 50%;
+  width: 6px; height: 6px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: var(--vc-accent);
+  animation: vc-breathe 2.2s var(--vc-ease-both) infinite;
+}
+.vc-tlbar[data-state='failed']  { background: var(--vc-danger); }
+.vc-tlbar[data-state='waiting'] {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--vc-line-3) 0 4px,
+    transparent 4px 8px
+  );
+}
+.vc-tlbar[data-state='queued']  { background: var(--vc-line-2); }
+
+/* Reglas verticales de tiempo. */
+.vc-tlaxis {
+  position: relative;
+  height: 18px;
+  display: grid;
+  grid-template-columns: 168px 1fr 66px;
+  gap: var(--vc-3);
+  padding: 0 var(--vc-2);
+  margin-bottom: var(--vc-1);
+}
+.vc-tlaxis__track { position: relative; }
+.vc-tlaxis__tick {
+  position: absolute;
+  left: var(--x, 0%);
+  top: 0;
+  font-family: var(--vc-mono);
+  font-size: 9.5px;
+  color: var(--vc-text-4);
+  transform: translateX(-50%);
+}
+.vc-tlgrid {
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(90deg, var(--vc-line) 0 1px, transparent 1px 25%);
+  pointer-events: none;
+  opacity: .6;
+}

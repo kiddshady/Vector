@@ -1,0 +1,271 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   VECTOR — shell
+   El chasis de la ventana: titlebar propia, rail de navegación, área de vista,
+   inspector y statusbar. Todo dibujado por nosotros — nada de frame nativo.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.vc-app {
+  display: grid;
+  grid-template-rows: var(--vc-titlebar) 1fr var(--vc-statusbar);
+  height: 100vh;
+  background: var(--vc-bg);
+}
+
+/* ── Titlebar ──────────────────────────────────────────────────────────────── */
+.vc-titlebar {
+  display: flex;
+  align-items: center;
+  gap: var(--vc-3);
+  padding-left: var(--vc-4);
+  background: var(--vc-bg);
+  box-shadow: inset 0 -1px 0 var(--vc-line);
+  -webkit-app-region: drag;
+  position: relative;
+  z-index: 20;
+}
+.vc-titlebar button,
+.vc-titlebar .vc-no-drag { -webkit-app-region: no-drag; }
+
+/* Wordmark: el mark (dos vectores convergiendo) + VECTOR en versalitas. */
+.vc-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--vc-2);
+  color: var(--vc-text-2);
+  transition: var(--tr-color);
+}
+.vc-brand:hover { color: var(--vc-text); }
+.vc-brand__mark { width: 18px; height: 18px; color: var(--vc-accent); }
+.vc-brand__mark .vc-brand__trail { opacity: .34; }
+.vc-brand__name {
+  font-size: var(--vc-fs-11);
+  font-weight: var(--vc-w-semi);
+  letter-spacing: var(--vc-track-caps);
+  text-transform: uppercase;
+}
+
+/* El contexto de la ventana vive en el centro del titlebar, no en el título. */
+.vc-titlebar__context {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--vc-2);
+  font-size: var(--vc-fs-11);
+  color: var(--vc-text-3);
+  pointer-events: none;
+}
+
+/* Controles de ventana: propios, no los de Windows. */
+.vc-wincontrols { display: flex; margin-left: auto; height: 100%; }
+.vc-wincontrol {
+  width: 46px;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--vc-text-3);
+  cursor: default;
+  transition: var(--tr-color);
+}
+.vc-wincontrol:hover { background: var(--vc-wash-1); color: var(--vc-text); }
+.vc-wincontrol:active { background: var(--vc-wash-2); }
+.vc-wincontrol--close:hover { background: var(--vc-danger-dim); color: #fff; }
+.vc-wincontrol .vc-icon { width: 11px; height: 11px; stroke-width: 1.2; }
+
+/* ── Cuerpo ───────────────────────────────────────────────────────────────── */
+.vc-body {
+  display: grid;
+  grid-template-columns: var(--vc-rail) 1fr;
+  min-height: 0;
+}
+
+/* ── Rail de navegación ───────────────────────────────────────────────────── */
+.vc-rail {
+  display: flex;
+  flex-direction: column;
+  background: var(--vc-s1);
+  box-shadow: inset -1px 0 0 var(--vc-line);
+  min-height: 0;
+}
+.vc-rail__top { padding: var(--vc-3) var(--vc-3) var(--vc-2); }
+.vc-rail__nav { flex: 1 1 auto; min-height: 0; padding: 0 var(--vc-3); }
+.vc-rail__group { margin-bottom: var(--vc-1); }
+.vc-rail__group-label {
+  padding: var(--vc-3) var(--vc-2) var(--vc-1);
+  font-size: var(--vc-fs-10);
+  font-weight: var(--vc-w-semi);
+  letter-spacing: var(--vc-track-caps);
+  text-transform: uppercase;
+  color: var(--vc-text-4);
+}
+
+.vc-navitem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--vc-3);
+  width: 100%;
+  padding: 0 var(--vc-2);
+  height: 32px;
+  border: 0;
+  border-radius: var(--vc-r-sm);
+  background: transparent;
+  color: var(--vc-text-2);
+  font-size: var(--vc-fs-13);
+  text-align: left;
+  cursor: default;
+  transition: var(--tr-color);
+}
+.vc-navitem .vc-icon { color: var(--vc-text-3); transition: color var(--vc-t-1) var(--vc-ease-soft); }
+.vc-navitem:hover { background: var(--vc-wash-1); color: var(--vc-text); }
+.vc-navitem:hover .vc-icon { color: var(--vc-text-2); }
+.vc-navitem.is-active {
+  background: var(--vc-wash-2);
+  color: var(--vc-text);
+  font-weight: var(--vc-w-medium);
+}
+.vc-navitem.is-active .vc-icon { color: var(--vc-accent); }
+
+/* El indicador de activo es un vector corto sobre el borde izquierdo: crece
+   desde el centro en vez de aparecer. */
+.vc-navitem::before {
+  content: '';
+  position: absolute;
+  left: -12px;
+  top: 50%;
+  width: 2px;
+  height: 16px;
+  border-radius: var(--vc-r-pill);
+  background: var(--vc-accent);
+  transform: translateY(-50%) scaleY(0);
+  transition: transform var(--vc-t-3) var(--vc-ease);
+}
+.vc-navitem.is-active::before { transform: translateY(-50%) scaleY(1); }
+
+/* Contador a la derecha del item (corridas activas, borradores…) */
+.vc-navitem__count {
+  margin-left: auto;
+  font-size: var(--vc-fs-11);
+  font-variant-numeric: tabular-nums;
+  color: var(--vc-text-4);
+  transition: color var(--vc-t-1) var(--vc-ease-soft);
+}
+.vc-navitem:hover .vc-navitem__count,
+.vc-navitem.is-active .vc-navitem__count { color: var(--vc-text-2); }
+
+/* Pie del rail: salud de proveedores. */
+.vc-rail__foot {
+  padding: var(--vc-3);
+  box-shadow: inset 0 1px 0 var(--vc-line);
+}
+
+/* ── Área principal ───────────────────────────────────────────────────────── */
+.vc-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--vc-bg);
+}
+
+.vc-viewhead {
+  display: flex;
+  align-items: center;
+  gap: var(--vc-3);
+  padding: var(--vc-5) var(--vc-6) var(--vc-4);
+  flex: 0 0 auto;
+}
+.vc-viewhead__text { min-width: 0; }
+.vc-viewhead__title {
+  font-size: var(--vc-fs-19);
+  font-weight: var(--vc-w-semi);
+  letter-spacing: var(--vc-track-tight);
+  line-height: 1.2;
+}
+.vc-viewhead__sub {
+  font-size: var(--vc-fs-12);
+  color: var(--vc-text-3);
+  margin-top: 2px;
+}
+.vc-viewhead__actions { margin-left: auto; display: flex; align-items: center; gap: var(--vc-2); }
+
+/* Breadcrumb: el separador es un chevron SVG, nunca un "/" ni un "›". */
+.vc-crumbs { display: flex; align-items: center; gap: var(--vc-1); font-size: var(--vc-fs-12); }
+.vc-crumbs__item {
+  color: var(--vc-text-3);
+  padding: 2px var(--vc-1);
+  border-radius: var(--vc-r-xs);
+  transition: var(--tr-color);
+}
+.vc-crumbs__item:hover { color: var(--vc-text); background: var(--vc-wash-1); }
+.vc-crumbs__item:last-child { color: var(--vc-text-2); }
+.vc-crumbs .vc-icon { width: 12px; height: 12px; color: var(--vc-text-4); }
+
+.vc-viewbody { flex: 1 1 auto; min-height: 0; display: flex; }
+/* position:relative para anclar los controles flotantes del lienzo: si viven
+   DENTRO del contenedor que scrollea, se van de pantalla con el contenido. */
+.vc-viewbody__main {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* ── Inspector (panel derecho) ────────────────────────────────────────────── */
+.vc-inspector {
+  width: var(--vc-inspector);
+  flex: 0 0 auto;
+  background: var(--vc-s1);
+  box-shadow: inset 1px 0 0 var(--vc-line);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  transition: width var(--vc-t-4) var(--vc-ease);
+}
+/* El contenido conserva su ancho mientras el panel se cierra: sin esto el
+   texto se reacomoda durante la transición y el colapso se ve como un temblor. */
+.vc-inspector > * { min-width: var(--vc-inspector); }
+.vc-inspector.is-collapsed { width: 0; }
+.vc-inspector__head {
+  display: flex;
+  align-items: center;
+  gap: var(--vc-2);
+  padding: var(--vc-4) var(--vc-4) var(--vc-3);
+  flex: 0 0 auto;
+}
+.vc-inspector__body { flex: 1 1 auto; min-height: 0; padding-left: var(--vc-4); padding-right: var(--vc-4); }
+.vc-inspector__foot {
+  padding: var(--vc-3) var(--vc-4);
+  box-shadow: inset 0 1px 0 var(--vc-line);
+  display: flex;
+  gap: var(--vc-2);
+}
+
+/* ── Statusbar ────────────────────────────────────────────────────────────── */
+.vc-statusbar {
+  display: flex;
+  align-items: center;
+  gap: var(--vc-4);
+  padding: 0 var(--vc-4);
+  background: var(--vc-s1);
+  box-shadow: inset 0 1px 0 var(--vc-line);
+  font-size: var(--vc-fs-11);
+  color: var(--vc-text-3);
+}
+.vc-statusbar__item {
+  display: flex;
+  align-items: center;
+  gap: var(--vc-2);
+  padding: 0 var(--vc-1);
+  height: 100%;
+  transition: var(--tr-color);
+}
+.vc-statusbar__item:hover { color: var(--vc-text-2); }
+.vc-statusbar__item .vc-icon { width: 12px; height: 12px; }
+.vc-statusbar__value { color: var(--vc-text-2); font-variant-numeric: tabular-nums; }

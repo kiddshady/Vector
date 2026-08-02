@@ -1,0 +1,198 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   VECTOR — editor del grafo
+   Las señales que existen solo mientras se construye: puertos de conexión,
+   arista fantasma, destino de enlace, paso incompleto, estado del guardado y la
+   tira de validación.
+
+   Todas siguen la regla del sistema: el rojo NO aparece acá. Un paso a medio
+   configurar no es un fallo, es un borrador — se señala con trazo punteado y
+   luminancia, no con color.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Estado del guardado ─────────────────────────────────────────────────── */
+.vc-savestate {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 var(--vc-2);
+  font-size: var(--vc-fs-11);
+  color: var(--vc-text-4);
+  transition: color var(--vc-t-3) var(--vc-ease-soft);
+  user-select: none;
+}
+.vc-savestate .vc-icon { width: 12px; height: 12px; }
+.vc-savestate[data-state='dirty'],
+.vc-savestate[data-state='saving'] { color: var(--vc-text-3); }
+.vc-savestate[data-state='error'] { color: var(--vc-danger); }
+
+/* ── Lienzo en modo edición ──────────────────────────────────────────────── */
+.vc-canvas.is-editable .vc-node { cursor: grab; }
+.vc-canvas.is-editable .vc-node:active { cursor: grabbing; }
+.vc-canvas.is-linking { cursor: crosshair; }
+.vc-canvas.is-linking .vc-node { cursor: crosshair; }
+.vc-canvas:focus-visible { box-shadow: inset 0 0 0 1px var(--vc-line-3); }
+
+/* Puertos: en modo edición se insinúan siempre, no solo con el hover del nodo,
+   porque son el único punto desde el que se puede tirar una conexión. */
+.vc-canvas.is-editable .vc-node__port { opacity: .45; }
+.vc-canvas.is-editable .vc-node:hover .vc-node__port { opacity: 1; }
+/* El área de agarre es más grande que el punto dibujado: 7 px es imposible de
+   pegarle con el mouse en movimiento. */
+.vc-node__port::after {
+  content: '';
+  position: absolute;
+  inset: -7px;
+  border-radius: 50%;
+}
+.vc-canvas.is-editable .vc-node__port--out { cursor: crosshair; }
+
+/* El nodo bajo el cursor mientras se arrastra una conexión. */
+.vc-node.is-linktarget {
+  box-shadow: inset 0 0 0 1px var(--vc-accent), var(--vc-e3);
+  transform: translateY(-1px) scale(1.015);
+}
+
+/* Paso incompleto: trazo punteado, sin color. Es un borrador, no un error. */
+.vc-node.is-incomplete::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1px dashed var(--vc-line-3);
+  border-radius: inherit;
+  pointer-events: none;
+  animation: vc-fade-in var(--vc-t-3) var(--vc-ease) both;
+}
+
+/* ── Marcos de grupo ─────────────────────────────────────────────────────────
+   El marco no intercepta el puntero: si lo hiciera, arrastrar el lienzo por
+   adentro del marco no funcionaría. Solo su etiqueta es clickeable. */
+.vc-group { pointer-events: none; transition: box-shadow var(--vc-t-2) var(--vc-ease-soft); }
+.vc-group__label { pointer-events: auto; cursor: default; transition: var(--tr-color); }
+.vc-canvas.is-editable .vc-group__label:hover { color: var(--vc-text-2); background: var(--vc-s2); }
+.vc-group.is-selected { box-shadow: inset 0 0 0 1px var(--vc-line-3); }
+.vc-group.is-selected .vc-group__label { color: var(--vc-text); }
+
+/* ── Aristas del editor ──────────────────────────────────────────────────── */
+
+/* Trazo grueso e invisible para poder clickear una bezier de 1.5 px. */
+.vc-edge-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 16;
+  cursor: pointer;
+  pointer-events: stroke;
+}
+.vc-canvas:not(.is-editable) .vc-edge-hit { pointer-events: none; cursor: default; }
+
+.vc-edge.is-selected {
+  stroke: var(--vc-accent);
+  stroke-width: 2.25;
+}
+
+/* La arista fantasma que sigue al cursor mientras se conecta. */
+.vc-edge--pending {
+  stroke: var(--vc-accent);
+  stroke-width: 1.75;
+  stroke-dasharray: 4 5;
+  opacity: .75;
+  pointer-events: none;
+}
+
+/* ── Chips de referencia ─────────────────────────────────────────────────── */
+.vc-refchips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: -8px 0 16px;
+}
+.vc-refchip {
+  border: 0;
+  cursor: default;
+  font-family: var(--vc-mono);
+  transition: var(--tr-color), transform var(--vc-t-1) var(--vc-ease-soft);
+}
+.vc-refchip:hover { background: var(--vc-wash-2); color: var(--vc-text); }
+.vc-refchip:active { transform: scale(.95); }
+
+/* ── Tira de validación ──────────────────────────────────────────────────────
+   Flota abajo a la derecha del lienzo. Entra y sale animada, y no tapa la barra
+   de zoom, que vive abajo a la izquierda. */
+.vc-validation {
+  position: absolute;
+  right: var(--vc-4);
+  bottom: var(--vc-4);
+  max-width: min(460px, calc(100% - 220px));
+  z-index: 5;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity var(--vc-t-3) var(--vc-ease-soft), transform var(--vc-t-3) var(--vc-ease);
+}
+.vc-validation.is-open { opacity: 1; transform: none; pointer-events: auto; }
+.vc-validation__inner {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--vc-3);
+  border-radius: var(--vc-r-md);
+  background: rgba(20, 23, 27, .88);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--vc-hairline), var(--vc-e3);
+}
+.vc-validation__row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--vc-2);
+  font-size: var(--vc-fs-11);
+  line-height: 1.5;
+  color: var(--vc-text-3);
+  user-select: text;
+}
+.vc-validation__row .vc-icon { margin-top: 1px; color: var(--vc-text-4); }
+.vc-validation__row--error { color: var(--vc-danger); }
+.vc-validation__row--error .vc-icon { color: var(--vc-danger); }
+.vc-validation__row--warn { color: var(--vc-text-2); }
+
+/* ── Compuerta de aprobación ─────────────────────────────────────────────────
+   Lo único de la app que reclama atención por sí solo. No usa rojo: no falló
+   nada, te está esperando. La jerarquía la da la elevación y el anillo que
+   respira del propio nodo en el lienzo. */
+.vc-approval {
+  padding: var(--vc-3);
+  margin-bottom: var(--vc-4);
+  border-radius: var(--vc-r-md);
+  background: var(--vc-s3);
+  box-shadow: var(--vc-hairline), var(--vc-e2);
+  animation: vc-rise-in var(--vc-t-3) var(--vc-ease) both;
+}
+.vc-approval__head {
+  display: flex;
+  align-items: center;
+  gap: var(--vc-2);
+  font-size: var(--vc-fs-11);
+  font-weight: var(--vc-w-medium);
+  color: var(--vc-text-2);
+  margin-bottom: var(--vc-2);
+}
+.vc-approval__head .vc-icon { color: var(--vc-accent); }
+.vc-approval__q {
+  font-size: var(--vc-fs-13);
+  line-height: 1.55;
+  color: var(--vc-text);
+}
+
+/* ── Selector de herramientas ────────────────────────────────────────────── */
+.vc-toolrow { transition: opacity var(--vc-t-2) var(--vc-ease-soft); }
+.vc-toolrow.is-blocked { opacity: .45; }
+.vc-toolrow.is-blocked .vc-check { pointer-events: none; }
+.vc-toolrow .vc-icon { color: var(--vc-text-3); }
+
+/* ── Formularios del inspector ───────────────────────────────────────────── */
+.vc-inspector .vc-textarea { resize: vertical; min-height: 64px; }
+.vc-inspector .vc-section { padding-top: var(--vc-2); }
+.vc-inspector input:disabled,
+.vc-inspector .vc-select:disabled {
+  color: var(--vc-text-4);
+  cursor: default;
+}

@@ -1,0 +1,417 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   VECTOR — superficies y estado
+   Cards, listas, tablas, tabs, medidores… y el sistema de estado, que es la
+   pieza central del diseño.
+
+   CÓMO SE LEE EL ESTADO SIN COLOR
+   La FORMA dice qué es la cosa:   ● agente   ◆ decisión/compuerta
+                                    ⬢ fan-out  ■ entrada/salida
+   La LUMINANCIA dice si está viva: corriendo = lo más claro de la pantalla,
+                                    terminado = se apaga y retrocede.
+   El MOVIMIENTO es exclusivo de "corriendo": es lo único que respira.
+   El ROJO aparece una sola vez en toda la app: cuando algo falló.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Marca de estado ──────────────────────────────────────────────────────── */
+.vc-mark {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+.vc-mark__core {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  transition: background-color var(--vc-t-3) var(--vc-ease-soft),
+              box-shadow var(--vc-t-3) var(--vc-ease-soft),
+              transform var(--vc-t-3) var(--vc-ease);
+}
+/* El anillo que respira. Solo existe cuando algo corre. */
+.vc-mark__halo {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px currentColor;
+  opacity: 0;
+  transition: opacity var(--vc-t-3) var(--vc-ease-soft);
+}
+
+/* Formas — la identidad del nodo */
+.vc-mark--diamond .vc-mark__core { border-radius: 1.5px; transform: rotate(45deg) scale(.84); }
+.vc-mark--diamond .vc-mark__halo { border-radius: 2px; transform: rotate(45deg) scale(.8); }
+.vc-mark--square  .vc-mark__core { border-radius: 1.5px; }
+.vc-mark--square  .vc-mark__halo { border-radius: 3px; }
+.vc-mark--hex     .vc-mark__core {
+  border-radius: 0;
+  width: 9px; height: 10px;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+}
+.vc-mark--hex .vc-mark__halo { clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); box-shadow: none; }
+
+/* Estados */
+.vc-mark[data-state='idle']    { color: var(--vc-text-4); }
+.vc-mark[data-state='idle']    .vc-mark__core { background: transparent; box-shadow: inset 0 0 0 1.5px currentColor; }
+
+.vc-mark[data-state='queued']  { color: var(--vc-text-4); }
+.vc-mark[data-state='queued']  .vc-mark__core { background: transparent; box-shadow: inset 0 0 0 1.5px currentColor; transform: scale(.8); }
+.vc-mark--diamond[data-state='queued'] .vc-mark__core { transform: rotate(45deg) scale(.7); }
+
+.vc-mark[data-state='running'] { color: var(--vc-accent); }
+.vc-mark[data-state='running'] .vc-mark__halo { opacity: 1; animation: vc-breathe 2.2s var(--vc-ease-both) infinite; }
+
+.vc-mark[data-state='waiting'] { color: var(--vc-text-2); }
+.vc-mark[data-state='waiting'] .vc-mark__core { background: transparent; box-shadow: inset 0 0 0 1.5px currentColor; }
+.vc-mark[data-state='waiting'] .vc-mark__halo { opacity: .3; }
+
+.vc-mark[data-state='done']    { color: var(--vc-text-3); }
+
+.vc-mark[data-state='skipped'] { color: var(--vc-text-4); opacity: .5; }
+.vc-mark[data-state='skipped'] .vc-mark__core { background: transparent; box-shadow: inset 0 0 0 1.5px currentColor; transform: scale(.6); }
+
+.vc-mark[data-state='failed']  { color: var(--vc-danger); }
+.vc-mark[data-state='failed']  .vc-mark__halo { opacity: .55; }
+
+/* Etiqueta de estado: la marca + su palabra. */
+.vc-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vc-2);
+  font-size: var(--vc-fs-11);
+  color: var(--vc-text-3);
+  white-space: nowrap;
+  transition: color var(--vc-t-2) var(--vc-ease-soft);
+}
+.vc-status[data-state='running'] { color: var(--vc-text); }
+.vc-status[data-state='failed']  { color: var(--vc-danger); }
+.vc-status[data-state='waiting'] { color: var(--vc-text-2); }
+
+/* ── Chip / tag ───────────────────────────────────────────────────────────── */
+.vc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 20px;
+  padding: 0 var(--vc-2);
+  border-radius: var(--vc-r-xs);
+  background: var(--vc-wash-1);
+  color: var(--vc-text-2);
+  font-size: var(--vc-fs-11);
+  font-weight: var(--vc-w-medium);
+  white-space: nowrap;
+  transition: var(--tr-color);
+}
+.vc-chip .vc-icon { width: 11px; height: 11px; color: var(--vc-text-3); }
+.vc-chip--mono { font-family: var(--vc-mono); font-size: 10.5px; letter-spacing: 0; }
+.vc-chip--outline { background: transparent; box-shadow: var(--vc-hairline); }
+.vc-chip--danger { background: var(--vc-danger-wash); color: var(--vc-danger); }
+.vc-chip--danger .vc-icon { color: var(--vc-danger); }
+
+/* ── Card / panel ─────────────────────────────────────────────────────────────
+   La jerarquía la construye la ELEVACIÓN, no un borde marcado. El hairline
+   existe para definir el filo, no para separar planos. */
+.vc-card {
+  background: var(--vc-s2);
+  border-radius: var(--vc-r-lg);
+  box-shadow: var(--vc-hairline), var(--vc-e2);
+  transition: var(--tr-surface);
+}
+.vc-card--interactive:hover {
+  background: var(--vc-s3);
+  box-shadow: inset 0 0 0 1px var(--vc-line-2), var(--vc-e3);
+  transform: translateY(-1px);
+}
+.vc-card--interactive:active { transform: translateY(0) scale(.995); }
+.vc-card__head {
+  display: flex;
+  align-items: center;
+  gap: var(--vc-3);
+  padding: var(--vc-4) var(--vc-4) var(--vc-3);
+}
+.vc-card__body { padding: 0 var(--vc-4) var(--vc-4); }
+.vc-card__foot {
+  display: flex;
+  align-items: center;
+  gap: var(--vc-2);
+  padding: var(--vc-3) var(--vc-4);
+  box-shadow: inset 0 1px 0 var(--vc-line);
+}
+
+/* Panel hundido: consola, código, canvas. */
+.vc-sunken {
+  background: var(--vc-sunken);
+  border-radius: var(--vc-r-md);
+  box-shadow: var(--vc-hairline);
+}
+
+/* ── Sección del inspector ────────────────────────────────────────────────── */
+.vc-section { padding: var(--vc-4) 0; box-shadow: inset 0 -1px 0 var(--vc-line); }
+.vc-section:last-child { box-shadow: none; }
+.vc-section__head {
+  display: flex;
+  align-items: center;
+  gap: var(--vc-2);
+  margin-bottom: var(--vc-3);
+}
+.vc-section__title {
+  font-size: var(--vc-fs-10);
+  font-weight: var(--vc-w-semi);
+  letter-spacing: var(--vc-track-caps);
+  text-transform: uppercase;
+  color: var(--vc-text-4);
+}
+
+/* Par clave/valor */
+.vc-kv {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: var(--vc-2) var(--vc-3);
+  align-items: baseline;
+  font-size: var(--vc-fs-12);
+}
+.vc-kv__k { color: var(--vc-text-4); }
+.vc-kv__v { color: var(--vc-text-2); min-width: 0; overflow: hidden; text-overflow: ellipsis; user-select: text; }
+
+/* ── Lista ────────────────────────────────────────────────────────────────── */
+.vc-list { display: flex; flex-direction: column; gap: 2px; }
+.vc-listitem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--vc-3);
+  min-height: 40px;
+  padding: var(--vc-2) var(--vc-3);
+  border-radius: var(--vc-r-md);
+  background: transparent;
+  text-align: left;
+  border: 0;
+  color: inherit;
+  cursor: default;
+  overflow: hidden;
+  transition: var(--tr-color), transform var(--vc-t-1) var(--vc-ease-soft);
+}
+.vc-listitem:hover { background: var(--vc-wash-1); }
+.vc-listitem.is-selected { background: var(--vc-wash-2); }
+.vc-listitem.is-selected::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 50%;
+  width: 2px; height: 60%;
+  border-radius: var(--vc-r-pill);
+  background: var(--vc-accent);
+  transform: translateY(-50%);
+  animation: vc-fade-in var(--vc-t-2) var(--vc-ease) both;
+}
+/* Flex column explícito: el título y el subtítulo son <span>, y sin esto
+   quedarían en línea uno al lado del otro. */
+.vc-listitem__main { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; }
+.vc-listitem__title {
+  font-size: var(--vc-fs-13);
+  color: var(--vc-text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.vc-listitem__sub {
+  font-size: var(--vc-fs-11);
+  color: var(--vc-text-3);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.vc-listitem__aside { display: flex; align-items: center; gap: var(--vc-3); flex: 0 0 auto; }
+
+/* Las acciones de fila se materializan con el hover, no ocupan sitio siempre. */
+.vc-rowactions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transform: translateX(4px);
+  transition: opacity var(--vc-t-2) var(--vc-ease-soft), transform var(--vc-t-2) var(--vc-ease);
+}
+.vc-listitem:hover .vc-rowactions,
+.vc-listitem:focus-within .vc-rowactions,
+.vc-tr:hover .vc-rowactions { opacity: 1; transform: none; }
+
+/* ── Tabla ────────────────────────────────────────────────────────────────── */
+.vc-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--vc-fs-12); }
+.vc-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: var(--vc-2) var(--vc-3);
+  text-align: left;
+  font-size: var(--vc-fs-10);
+  font-weight: var(--vc-w-semi);
+  letter-spacing: var(--vc-track-caps);
+  text-transform: uppercase;
+  color: var(--vc-text-4);
+  background: var(--vc-bg);
+  box-shadow: inset 0 -1px 0 var(--vc-line);
+  white-space: nowrap;
+  user-select: none;
+}
+.vc-table th.is-sortable { transition: color var(--vc-t-1) var(--vc-ease-soft); }
+.vc-table th.is-sortable:hover { color: var(--vc-text-2); }
+.vc-table td {
+  padding: var(--vc-2) var(--vc-3);
+  color: var(--vc-text-2);
+  box-shadow: inset 0 -1px 0 var(--vc-line);
+  user-select: text;
+}
+.vc-tr { transition: background-color var(--vc-t-1) var(--vc-ease-soft); }
+.vc-tr:hover td { background: var(--vc-wash-1); }
+.vc-tr.is-selected td { background: var(--vc-wash-2); }
+.vc-tr.is-failed td:first-child { box-shadow: inset 2px 0 0 var(--vc-danger), inset 0 -1px 0 var(--vc-line); }
+.vc-td--num { text-align: right; font-variant-numeric: tabular-nums; }
+.vc-td--tight { width: 1%; white-space: nowrap; }
+
+/* ── Tabs ─────────────────────────────────────────────────────────────────────
+   El subrayado viaja entre tabs (--tab-x / --tab-w los setea tabs() en app.js). */
+.vc-tabs {
+  position: relative;
+  display: flex;
+  gap: var(--vc-1);
+  box-shadow: inset 0 -1px 0 var(--vc-line);
+}
+.vc-tabs::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  width: var(--tab-w, 0px);
+  border-radius: var(--vc-r-pill);
+  background: var(--vc-accent);
+  transform: translateX(var(--tab-x, 0px));
+  transition: transform var(--vc-t-3) var(--vc-ease), width var(--vc-t-3) var(--vc-ease);
+}
+.vc-tab {
+  display: flex;
+  align-items: center;
+  gap: var(--vc-2);
+  height: 34px;
+  padding: 0 var(--vc-3);
+  border: 0;
+  background: transparent;
+  color: var(--vc-text-3);
+  font-size: var(--vc-fs-12);
+  font-weight: var(--vc-w-medium);
+  cursor: default;
+  transition: color var(--vc-t-2) var(--vc-ease-soft);
+}
+.vc-tab:hover { color: var(--vc-text-2); }
+.vc-tab.is-active { color: var(--vc-text); }
+.vc-tab__count {
+  font-size: var(--vc-fs-10);
+  font-variant-numeric: tabular-nums;
+  color: var(--vc-text-4);
+  padding: 0 4px;
+  border-radius: var(--vc-r-xs);
+  background: var(--vc-wash-1);
+}
+
+/* ── Medidor / progreso ───────────────────────────────────────────────────── */
+.vc-meter {
+  position: relative;
+  height: 3px;
+  border-radius: var(--vc-r-pill);
+  background: var(--vc-s3);
+  overflow: hidden;
+}
+.vc-meter__fill {
+  height: 100%;
+  width: var(--vc-pct, 0%);
+  border-radius: inherit;
+  background: var(--vc-accent);
+  transition: width var(--vc-t-4) var(--vc-ease), background-color var(--vc-t-3) var(--vc-ease-soft);
+}
+.vc-meter--danger .vc-meter__fill { background: var(--vc-danger); }
+/* Indeterminado: un vector que recorre la pista.
+   Dos detalles que no son cosméticos:
+   · El recorrido va de -100% a 294% de su PROPIO ancho (34% de la pista), que
+     es exactamente lo que hace falta para entrar por un borde y salir por el
+     otro. Pasarse deja la barra fuera de la pista, y la pista vacía se lee
+     como un componente roto, no como "esperando".
+   · Timing lineal, no `ease-both`. Un bucle infinito no tiene principio ni
+     final del que acelerar: la curva solo hace que la barra se quede quieta
+     justo en los extremos, donde no se ve. */
+.vc-meter--indeterminate .vc-meter__fill {
+  width: 34%;
+  animation: vc-meter-sweep 1.5s linear infinite;
+}
+@keyframes vc-meter-sweep {
+  0%   { transform: translateX(-100%) }
+  100% { transform: translateX(294%) }
+}
+
+/* Cifra grande con su rótulo: el bloque de métrica. */
+.vc-stat { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.vc-stat__value {
+  font-size: var(--vc-fs-19);
+  font-weight: var(--vc-w-semi);
+  letter-spacing: var(--vc-track-tight);
+  font-variant-numeric: tabular-nums;
+  color: var(--vc-text);
+  line-height: 1.1;
+}
+.vc-stat__label {
+  font-size: var(--vc-fs-10);
+  font-weight: var(--vc-w-medium);
+  letter-spacing: var(--vc-track-caps);
+  text-transform: uppercase;
+  color: var(--vc-text-4);
+}
+.vc-stat__unit { font-size: var(--vc-fs-12); font-weight: var(--vc-w-regular); color: var(--vc-text-3); }
+
+/* ── Avatar del agente ────────────────────────────────────────────────────────
+   Sin fotos ni emojis: un monograma en mono sobre superficie elevada. */
+.vc-avatar {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  border-radius: var(--vc-r-md);
+  background: var(--vc-s3);
+  box-shadow: var(--vc-hairline);
+  font-family: var(--vc-mono);
+  font-size: 11px;
+  font-weight: var(--vc-w-medium);
+  color: var(--vc-text-2);
+  letter-spacing: -.02em;
+  transition: var(--tr-surface);
+}
+.vc-avatar--lg { width: 36px; height: 36px; font-size: 13px; border-radius: var(--vc-r-lg); }
+
+/* ── Estado vacío ─────────────────────────────────────────────────────────────
+   Nunca una pantalla en blanco: un ícono grande y apagado, una frase y la
+   acción que la resuelve. */
+.vc-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--vc-3);
+  padding: var(--vc-10) var(--vc-6);
+  text-align: center;
+  animation: vc-rise-in var(--vc-t-4) var(--vc-ease) both;
+}
+.vc-empty .vc-icon { width: 34px; height: 34px; color: var(--vc-text-4); stroke-width: 1; }
+.vc-empty__title { font-size: var(--vc-fs-15); font-weight: var(--vc-w-medium); color: var(--vc-text-2); }
+.vc-empty__text { font-size: var(--vc-fs-12); color: var(--vc-text-4); max-width: 320px; line-height: var(--vc-lh-loose); }
+
+/* ── Consola de log ───────────────────────────────────────────────────────── */
+.vc-log {
+  font-family: var(--vc-mono);
+  font-size: 11.5px;
+  line-height: 1.65;
+  color: var(--vc-text-2);
+  user-select: text;
+}
+.vc-log__line { display: flex; gap: var(--vc-3); padding: 1px 0; animation: vc-fade-in var(--vc-t-2) var(--vc-ease) both; }
+.vc-log__time { color: var(--vc-text-4); flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+.vc-log__src  { color: var(--vc-text-3); flex: 0 0 auto; min-width: 74px; }
+.vc-log__msg  { min-width: 0; word-break: break-word; }
+.vc-log__line--error .vc-log__msg { color: var(--vc-danger); }
+.vc-log__line--muted .vc-log__msg { color: var(--vc-text-4); }

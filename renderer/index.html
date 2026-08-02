@@ -1,0 +1,140 @@
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;">
+<title>Vector</title>
+
+<link rel="stylesheet" href="./css/fonts.css">
+<link rel="stylesheet" href="./css/tokens.css">
+<link rel="stylesheet" href="./css/base.css">
+<link rel="stylesheet" href="./css/motion.css">
+<link rel="stylesheet" href="./css/shell.css">
+<link rel="stylesheet" href="./css/controls.css">
+<link rel="stylesheet" href="./css/surfaces.css">
+<link rel="stylesheet" href="./css/overlays.css">
+<link rel="stylesheet" href="./css/graph.css">
+<link rel="stylesheet" href="./css/editor.css">
+
+<style>
+  /* Boot splash: réplica exacta del primer frame. Pinta ANTES de que cargue
+     ningún módulo, así no hay un solo instante sin identidad en pantalla.
+     El color es el mismo backgroundColor de la BrowserWindow. */
+  #boot-splash {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: grid;
+    place-items: center;
+    background: #0a0b0d;
+    transition: opacity .34s cubic-bezier(.16, 1, .3, 1);
+  }
+  #boot-splash svg { width: 44px; height: 44px; stroke: #f2f4f7; fill: none;
+                     stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+  #boot-splash .trail { opacity: .34 }
+  /* Los dos vectores se DIBUJAN, no aparecen. */
+  #boot-splash path { stroke-dasharray: 22; stroke-dashoffset: 22;
+                      animation: boot-draw .7s cubic-bezier(.16,1,.3,1) forwards; }
+  #boot-splash path:last-child { animation-delay: .08s }
+  @keyframes boot-draw { to { stroke-dashoffset: 0 } }
+</style>
+
+<div id="boot-splash">
+  <svg viewBox="0 0 16 16">
+    <path class="trail" d="M2.5 4 6 8l-3.5 4"/>
+    <path d="M7.5 3.5 12.5 8l-5 4.5"/>
+  </svg>
+</div>
+
+<div class="vc-app">
+
+  <!-- ── Titlebar propia: acá no hay frame nativo ─────────────────────────── -->
+  <header class="vc-titlebar">
+    <div class="vc-brand vc-no-drag" data-tip="Vector 0.1.0">
+      <svg class="vc-brand__mark vc-icon" viewBox="0 0 16 16" aria-hidden="true">
+        <path class="vc-brand__trail" d="M2.5 4 6 8l-3.5 4"/>
+        <path d="M7.5 3.5 12.5 8l-5 4.5"/>
+      </svg>
+      <span class="vc-brand__name">Vector</span>
+    </div>
+
+    <button class="vc-iconbtn vc-iconbtn--sm vc-no-drag" id="btn-palette"
+            data-tip="Comandos" data-tip-key="Ctrl K"><i data-icon="search"></i></button>
+
+    <div class="vc-titlebar__context" id="titlebar-context"></div>
+
+    <div class="vc-wincontrols">
+      <button class="vc-wincontrol" id="win-min"   aria-label="Minimizar"><i data-icon="winMin"></i></button>
+      <button class="vc-wincontrol" id="win-max"   aria-label="Maximizar"><i data-icon="winMax"></i></button>
+      <button class="vc-wincontrol vc-wincontrol--close" id="win-close" aria-label="Cerrar"><i data-icon="winClose"></i></button>
+    </div>
+  </header>
+
+  <div class="vc-body">
+
+    <!-- ── Rail ──────────────────────────────────────────────────────────── -->
+    <nav class="vc-rail">
+      <div class="vc-rail__top">
+        <button class="vc-btn vc-btn--secondary vc-flashable" id="btn-new" style="width:100%">
+          <i data-icon="plus"></i> Nuevo pipeline
+        </button>
+      </div>
+
+      <div class="vc-rail__nav vc-scroll">
+        <div class="vc-rail__group">
+          <button class="vc-navitem" data-view="pipelines">
+            <i data-icon="pipeline"></i> Pipelines <span class="vc-navitem__count">4</span>
+          </button>
+          <button class="vc-navitem" data-view="runs">
+            <i data-icon="runs"></i> Corridas <span class="vc-navitem__count">1</span>
+          </button>
+          <button class="vc-navitem" data-view="agents">
+            <i data-icon="agents"></i> Agentes <span class="vc-navitem__count">5</span>
+          </button>
+        </div>
+
+        <div class="vc-rail__group">
+          <div class="vc-rail__group-label">Recursos</div>
+          <button class="vc-navitem" data-view="tools">
+            <i data-icon="tools"></i> Herramientas
+          </button>
+          <button class="vc-navitem" data-view="library">
+            <i data-icon="library"></i> Biblioteca
+          </button>
+        </div>
+
+        <div class="vc-rail__group">
+          <div class="vc-rail__group-label">Sistema</div>
+          <button class="vc-navitem" data-view="design">
+            <i data-icon="design"></i> Design system
+          </button>
+          <button class="vc-navitem" data-view="settings">
+            <i data-icon="settings"></i> Ajustes
+          </button>
+        </div>
+      </div>
+
+      <div class="vc-rail__foot" id="rail-providers"></div>
+    </nav>
+
+    <!-- ── Vista ─────────────────────────────────────────────────────────── -->
+    <main class="vc-main" id="view"></main>
+  </div>
+
+  <!-- ── Statusbar ───────────────────────────────────────────────────────── -->
+  <footer class="vc-statusbar">
+    <div class="vc-statusbar__item" data-tip="Corridas activas ahora mismo" data-tip-side="top">
+      <i data-icon="runs"></i> <span class="vc-statusbar__value" id="stat-active">1</span> activa
+    </div>
+    <div class="vc-statusbar__item" data-tip="Tokens consumidos hoy">
+      <i data-icon="zap"></i> <span class="vc-statusbar__value vc-num" id="stat-tokens">0</span> tokens
+    </div>
+    <div class="vc-statusbar__item" data-tip="Gasto acumulado del día">
+      <span class="vc-statusbar__value">USD <span id="stat-cost">3.42</span></span>
+    </div>
+    <div class="vc-spacer"></div>
+    <div class="vc-statusbar__item" id="stat-providers"></div>
+  </footer>
+</div>
+
+<div id="vc-layer"></div>
+
+<script type="module" src="./js/app.js"></script>

@@ -1,0 +1,332 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   VECTOR — controles
+   Botones, campos, switches, segmentados. Ninguno es un control nativo de
+   Chromium: cada uno está dibujado, y cada cambio de estado tiene transición.
+
+   En un sistema acromático el acento ES la luz: el botón primario se rellena
+   de blanco y su tinta es el fondo de la app. Por eso hay como máximo UN
+   primario por pantalla — dos blancos compitiendo rompen la jerarquía entera.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.vc-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--vc-2);
+  height: 30px;
+  padding: 0 var(--vc-3);
+  border: 0;
+  border-radius: var(--vc-r-sm);
+  background: transparent;
+  color: var(--vc-text-2);
+  font-size: var(--vc-fs-12);
+  font-weight: var(--vc-w-medium);
+  letter-spacing: -.005em;
+  white-space: nowrap;
+  cursor: default;
+  overflow: hidden;
+  transition: var(--tr-color), transform var(--vc-t-1) var(--vc-ease-soft);
+}
+.vc-btn .vc-icon { width: 14px; height: 14px; }
+.vc-btn:active { transform: scale(.975); }
+.vc-btn:disabled,
+.vc-btn[aria-disabled='true'] {
+  color: var(--vc-text-4);
+  pointer-events: none;
+}
+
+/* Primario: blanco pleno. El único de la pantalla. */
+.vc-btn--primary {
+  background: var(--vc-accent);
+  color: var(--vc-accent-ink);
+  font-weight: var(--vc-w-semi);
+  box-shadow: var(--vc-e1);
+}
+.vc-btn--primary:hover { background: #fff; box-shadow: var(--vc-e2); }
+.vc-btn--primary:disabled { background: var(--vc-s3); color: var(--vc-text-4); box-shadow: none; }
+
+/* Secundario: superficie elevada con contorno fino (inset, no border — un
+   border real deja hilacha de 1px en las esquinas con overflow:hidden). */
+.vc-btn--secondary {
+  background: var(--vc-s2);
+  color: var(--vc-text);
+  box-shadow: var(--vc-hairline), var(--vc-e1);
+}
+.vc-btn--secondary:hover { background: var(--vc-s3); box-shadow: inset 0 0 0 1px var(--vc-line-2), var(--vc-e2); }
+
+/* Ghost: sin superficie hasta que lo tocás. */
+.vc-btn--ghost:hover { background: var(--vc-wash-1); color: var(--vc-text); }
+.vc-btn--ghost:active { background: var(--vc-wash-2); }
+
+/* Danger: el rojo solo para lo destructivo. */
+.vc-btn--danger { color: var(--vc-danger); }
+.vc-btn--danger:hover { background: var(--vc-danger-wash); }
+.vc-btn--danger-solid {
+  background: var(--vc-danger-dim);
+  color: #fff;
+  box-shadow: var(--vc-e1);
+}
+.vc-btn--danger-solid:hover { background: #a04a50; }
+
+/* Tamaños */
+.vc-btn--sm { height: 24px; padding: 0 var(--vc-2); font-size: var(--vc-fs-11); }
+.vc-btn--sm .vc-icon { width: 12px; height: 12px; }
+.vc-btn--lg { height: 36px; padding: 0 var(--vc-4); font-size: var(--vc-fs-13); }
+
+/* Icon button: cuadrado. */
+.vc-iconbtn {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: var(--vc-r-sm);
+  background: transparent;
+  color: var(--vc-text-3);
+  cursor: default;
+  overflow: hidden;
+  position: relative;
+  transition: var(--tr-color), transform var(--vc-t-1) var(--vc-ease-soft);
+}
+.vc-iconbtn:hover { background: var(--vc-wash-1); color: var(--vc-text); }
+.vc-iconbtn:active { transform: scale(.92); background: var(--vc-wash-2); }
+.vc-iconbtn.is-active { background: var(--vc-wash-2); color: var(--vc-text); }
+.vc-iconbtn--sm { width: 22px; height: 22px; }
+.vc-iconbtn--sm .vc-icon { width: 13px; height: 13px; }
+
+/* ── Campos ───────────────────────────────────────────────────────────────── */
+.vc-field { display: flex; flex-direction: column; gap: var(--vc-2); }
+.vc-field__label {
+  font-size: var(--vc-fs-11);
+  font-weight: var(--vc-w-medium);
+  color: var(--vc-text-3);
+  letter-spacing: .01em;
+}
+.vc-field__hint { font-size: var(--vc-fs-11); color: var(--vc-text-4); }
+.vc-field__hint--error { color: var(--vc-danger); }
+
+.vc-input,
+.vc-textarea {
+  width: 100%;
+  min-height: 30px;
+  padding: 6px var(--vc-3);
+  border: 0;
+  border-radius: var(--vc-r-sm);
+  background: var(--vc-sunken);
+  color: var(--vc-text);
+  font-size: var(--vc-fs-13);
+  box-shadow: inset 0 0 0 1px var(--vc-line);
+  user-select: text;
+  cursor: text;
+  transition: box-shadow var(--vc-t-2) var(--vc-ease-soft),
+              background-color var(--vc-t-2) var(--vc-ease-soft);
+}
+.vc-input::placeholder,
+.vc-textarea::placeholder { color: var(--vc-text-4); }
+.vc-input:hover,
+.vc-textarea:hover { box-shadow: inset 0 0 0 1px var(--vc-line-2); }
+.vc-input:focus,
+.vc-textarea:focus {
+  background: var(--vc-bg);
+  box-shadow: inset 0 0 0 1px var(--vc-line-3), 0 0 0 3px var(--vc-wash-1);
+}
+.vc-input.is-invalid,
+.vc-textarea.is-invalid { box-shadow: inset 0 0 0 1px var(--vc-danger-ring); }
+.vc-textarea { min-height: 88px; resize: vertical; line-height: var(--vc-lh); }
+.vc-input--mono, .vc-textarea--mono { font-family: var(--vc-mono); font-size: 12px; }
+
+/* Campo con ícono adelante (búsqueda). */
+.vc-inputwrap { position: relative; display: flex; align-items: center; }
+.vc-inputwrap > .vc-icon:first-child {
+  position: absolute;
+  left: var(--vc-3);
+  width: 14px; height: 14px;
+  color: var(--vc-text-4);
+  pointer-events: none;
+  transition: color var(--vc-t-2) var(--vc-ease-soft);
+}
+.vc-inputwrap:focus-within > .vc-icon:first-child { color: var(--vc-text-2); }
+.vc-inputwrap > .vc-icon:first-child ~ .vc-input { padding-left: 30px; }
+
+/* ── Select propio ────────────────────────────────────────────────────────────
+   El <select> nativo abre un popup del sistema imposible de estilar: acá el
+   trigger es un botón y la lista es un menú nuestro (menu.js). */
+.vc-select {
+  display: flex;
+  align-items: center;
+  gap: var(--vc-2);
+  width: 100%;
+  height: 30px;
+  padding: 0 var(--vc-2) 0 var(--vc-3);
+  border: 0;
+  border-radius: var(--vc-r-sm);
+  background: var(--vc-sunken);
+  color: var(--vc-text);
+  font-size: var(--vc-fs-13);
+  text-align: left;
+  cursor: default;
+  box-shadow: inset 0 0 0 1px var(--vc-line);
+  transition: box-shadow var(--vc-t-2) var(--vc-ease-soft), background-color var(--vc-t-2) var(--vc-ease-soft);
+}
+.vc-select:hover { box-shadow: inset 0 0 0 1px var(--vc-line-2); }
+.vc-select.is-open { background: var(--vc-bg); box-shadow: inset 0 0 0 1px var(--vc-line-3); }
+.vc-select__value { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vc-select__value:empty::before { content: attr(data-placeholder); color: var(--vc-text-4); }
+.vc-select .vc-icon { color: var(--vc-text-4); transition: transform var(--vc-t-2) var(--vc-ease), color var(--vc-t-1) var(--vc-ease-soft); }
+.vc-select:hover .vc-icon { color: var(--vc-text-2); }
+.vc-select.is-open .vc-icon { transform: rotate(180deg); color: var(--vc-text-2); }
+
+/* ── Switch ───────────────────────────────────────────────────────────────── */
+.vc-switch {
+  position: relative;
+  width: 30px;
+  height: 17px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: var(--vc-r-pill);
+  background: var(--vc-s3);
+  cursor: default;
+  box-shadow: var(--vc-hairline);
+  transition: background-color var(--vc-t-2) var(--vc-ease-soft), box-shadow var(--vc-t-2) var(--vc-ease-soft);
+}
+.vc-switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--vc-text-3);
+  transition: transform var(--vc-t-2) var(--vc-ease), background-color var(--vc-t-2) var(--vc-ease-soft);
+}
+.vc-switch:hover::after { background: var(--vc-text-2); }
+.vc-switch.is-on { background: var(--vc-accent); }
+.vc-switch.is-on::after { transform: translateX(13px); background: var(--vc-accent-ink); }
+
+/* ── Checkbox ─────────────────────────────────────────────────────────────────
+   El tilde es un SVG que se DIBUJA (stroke-dashoffset), no un ✓ que aparece. */
+.vc-check {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: var(--vc-r-xs);
+  background: var(--vc-sunken);
+  color: var(--vc-accent-ink);
+  cursor: default;
+  box-shadow: inset 0 0 0 1px var(--vc-line-2);
+  transition: background-color var(--vc-t-2) var(--vc-ease-soft), box-shadow var(--vc-t-2) var(--vc-ease-soft);
+}
+.vc-check:hover { box-shadow: inset 0 0 0 1px var(--vc-line-3); }
+.vc-check .vc-icon {
+  width: 11px; height: 11px;
+  stroke-width: 2.2;
+  stroke-dasharray: 16;
+  stroke-dashoffset: 16;
+  transition: stroke-dashoffset var(--vc-t-3) var(--vc-ease);
+}
+.vc-check.is-on { background: var(--vc-accent); box-shadow: none; }
+.vc-check.is-on .vc-icon { stroke-dashoffset: 0; }
+
+/* ── Segmentado ───────────────────────────────────────────────────────────────
+   La cápsula seleccionada se DESLIZA entre opciones (--seg = índice activo).
+   Que viaje en vez de saltar es lo que lo hace sentir físico. */
+.vc-segmented {
+  position: relative;
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  padding: 2px;
+  border-radius: var(--vc-r-sm);
+  background: var(--vc-sunken);
+  box-shadow: var(--vc-hairline);
+}
+.vc-segmented::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: var(--seg-w, 0px);
+  height: calc(100% - 4px);
+  border-radius: var(--vc-r-xs);
+  background: var(--vc-s3);
+  box-shadow: var(--vc-e1);
+  transform: translateX(calc(var(--seg, 0) * var(--seg-w, 0px)));
+  transition: transform var(--vc-t-3) var(--vc-ease), width var(--vc-t-3) var(--vc-ease);
+}
+.vc-segmented__opt {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--vc-1);
+  height: 24px;
+  padding: 0 var(--vc-3);
+  border: 0;
+  background: transparent;
+  color: var(--vc-text-3);
+  font-size: var(--vc-fs-11);
+  font-weight: var(--vc-w-medium);
+  white-space: nowrap;
+  cursor: default;
+  transition: color var(--vc-t-2) var(--vc-ease-soft);
+}
+.vc-segmented__opt:hover { color: var(--vc-text-2); }
+.vc-segmented__opt.is-active { color: var(--vc-text); }
+.vc-segmented__opt .vc-icon { width: 12px; height: 12px; }
+
+/* ── Slider ───────────────────────────────────────────────────────────────── */
+.vc-slider {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 16px;
+  background: transparent;
+  cursor: default;
+}
+.vc-slider::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: var(--vc-r-pill);
+  background: linear-gradient(
+    to right,
+    var(--vc-accent) 0 var(--vc-pct, 50%),
+    var(--vc-s3) var(--vc-pct, 50%) 100%
+  );
+}
+.vc-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 11px;
+  height: 11px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background: var(--vc-accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .6);
+  transition: transform var(--vc-t-1) var(--vc-ease-soft), box-shadow var(--vc-t-1) var(--vc-ease-soft);
+}
+.vc-slider:hover::-webkit-slider-thumb { transform: scale(1.25); }
+.vc-slider:active::-webkit-slider-thumb { transform: scale(1.1); box-shadow: 0 0 0 5px var(--vc-wash-1); }
+
+/* ── Tecla ────────────────────────────────────────────────────────────────── */
+.vc-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--vc-r-xs);
+  background: var(--vc-s3);
+  box-shadow: var(--vc-hairline), 0 1px 0 rgba(0, 0, 0, .35);
+  font-family: var(--vc-font);
+  font-size: var(--vc-fs-10);
+  font-weight: var(--vc-w-medium);
+  color: var(--vc-text-3);
+  letter-spacing: .02em;
+}
+.vc-kbd .vc-icon { width: 10px; height: 10px; stroke-width: 1.8; }

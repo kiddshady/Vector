@@ -1,0 +1,211 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   VECTOR — base
+   Reset, tipografía y el reemplazo de TODO lo nativo de Chromium:
+   scrollbar, selección, focus ring. Nada acá delata que adentro hay un browser.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--vc-bg);
+}
+
+body {
+  font-family: var(--vc-font);
+  font-size: var(--vc-fs-13);
+  line-height: var(--vc-lh);
+  font-weight: var(--vc-w-regular);
+  color: var(--vc-text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'cv05' 1, 'ss03' 1;   /* Inter: l con cola, a de un piso */
+  /* El chrome no se selecciona (sensación nativa); el CONTENIDO sí — ver abajo. */
+  user-select: none;
+  cursor: default;
+}
+
+h1, h2, h3, h4, p, figure, blockquote { margin: 0; }
+ul, ol { margin: 0; padding: 0; list-style: none; }
+button, input, textarea, select { font: inherit; color: inherit; }
+img, svg { display: block; }
+a { color: inherit; text-decoration: none; }
+
+/* ── Copiabilidad ────────────────────────────────────────────────────────────
+   Todo lo que Fran podría querer llevarse al portapapeles se selecciona.
+   Bloquearlo es hostil, y `user-select:none` global es el anti-patrón clásico
+   de Electron. La regla: chrome no, contenido sí. */
+.vc-copyable,
+.vc-mono,
+.vc-log,
+p, code, pre,
+[data-copyable] {
+  user-select: text;
+  cursor: text;
+}
+
+::selection {
+  background: var(--vc-select);
+  color: var(--vc-text);
+}
+
+/* ── Scrollbar propia ────────────────────────────────────────────────────────
+   Fina, sin flechas, y el thumb se materializa con el hover del contenedor.
+   Nunca la gris de Windows. */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: transparent;
+  border: 3px solid transparent;
+  border-radius: var(--vc-r-pill);
+  background-clip: padding-box;
+  transition: background-color var(--vc-t-3) var(--vc-ease-soft);
+}
+*:hover::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, .10); }
+::-webkit-scrollbar-thumb:hover  { background-color: rgba(255, 255, 255, .20); }
+::-webkit-scrollbar-thumb:active { background-color: rgba(255, 255, 255, .28); }
+
+/* ── Focus ring propio ───────────────────────────────────────────────────────
+   Solo con teclado (:focus-visible), nunca el outline azul del sistema.
+   Doble anillo: uno del color del fondo que despega, otro de luz. */
+:focus { outline: none; }
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--vc-bg), 0 0 0 3.5px var(--vc-ring);
+  border-radius: var(--vc-r-sm);
+  transition: box-shadow var(--vc-t-1) var(--vc-ease-soft);
+}
+
+/* ── Tipografía utilitaria ─────────────────────────────────────────────────── */
+.vc-display {
+  font-size: var(--vc-fs-26);
+  font-weight: var(--vc-w-semi);
+  letter-spacing: var(--vc-track-tight);
+  line-height: var(--vc-lh-tight);
+}
+.vc-title {
+  font-size: var(--vc-fs-19);
+  font-weight: var(--vc-w-semi);
+  letter-spacing: var(--vc-track-tight);
+  line-height: var(--vc-lh-tight);
+}
+.vc-subtitle {
+  font-size: var(--vc-fs-15);
+  font-weight: var(--vc-w-medium);
+  letter-spacing: var(--vc-track-tight);
+}
+.vc-label {
+  font-size: var(--vc-fs-12);
+  font-weight: var(--vc-w-medium);
+  color: var(--vc-text-2);
+}
+.vc-meta {
+  font-size: var(--vc-fs-11);
+  color: var(--vc-text-3);
+}
+/* La versalita espaciada: el gesto editorial del sistema. */
+.vc-eyebrow {
+  font-size: var(--vc-fs-10);
+  font-weight: var(--vc-w-semi);
+  letter-spacing: var(--vc-track-caps);
+  text-transform: uppercase;
+  color: var(--vc-text-3);
+}
+.vc-mono {
+  font-family: var(--vc-mono);
+  font-size: 12px;
+  font-variant-ligatures: none;
+  letter-spacing: -.01em;
+}
+/* Números que no bailan al actualizarse en vivo. */
+.vc-num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+.vc-dim  { color: var(--vc-text-3); }
+.vc-dim2 { color: var(--vc-text-4); }
+.vc-danger { color: var(--vc-danger); }
+.vc-truncate {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Layout utilitario ───────────────────────────────────────────────────── */
+.vc-row  { display: flex; align-items: center; gap: var(--vc-2); }
+.vc-col  { display: flex; flex-direction: column; }
+.vc-grow { flex: 1 1 auto; min-width: 0; min-height: 0; }
+.vc-spacer { flex: 1 1 auto; }
+
+/* Divisor: hairline, no un borde marcado. */
+.vc-hr {
+  height: 1px;
+  background: var(--vc-line);
+  border: 0;
+  margin: var(--vc-3) 0;
+}
+.vc-vr { width: 1px; align-self: stretch; background: var(--vc-line); }
+
+/* ── Íconos ──────────────────────────────────────────────────────────────────
+   Todo símbolo es un SVG propio que se tiñe con currentColor. Cero emojis,
+   cero glifos unicode: se renderizan distinto en cada máquina y no se controlan. */
+.vc-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.vc-icon--sm { width: 14px; height: 14px; }
+.vc-icon--lg { width: 20px; height: 20px; }
+.vc-icon--xl { width: 28px; height: 28px; stroke-width: 1.25; }
+.vc-icon--fill { fill: currentColor; stroke: none; }
+
+/* ── Esfumado del scroll ─────────────────────────────────────────────────────
+   Donde el scroll recorta, el contenido se DESVANECE. Nunca un corte duro:
+   un corte se lee como un bug, el fade dice "hay más, seguí".
+   El padding ≥ --vc-fade evita que en reposo la banda coma el primer/último item.
+   Las clases .is-top / .is-bottom las maneja scrollFade() en motion.js. */
+.vc-scroll {
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-top: var(--vc-fade);
+  padding-bottom: var(--vc-fade);
+  transition: mask-image var(--vc-t-3) var(--vc-ease-soft);
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 var(--vc-fade),
+    #000 calc(100% - var(--vc-fade)),
+    transparent 100%
+  );
+}
+/* Pegado arriba: no esfumamos arriba. Pegado abajo: no esfumamos abajo. */
+.vc-scroll.is-top {
+  mask-image: linear-gradient(to bottom, #000 calc(100% - var(--vc-fade)), transparent 100%);
+}
+.vc-scroll.is-bottom {
+  mask-image: linear-gradient(to bottom, transparent 0, #000 var(--vc-fade));
+}
+.vc-scroll.is-top.is-bottom { mask-image: none; }
+
+.vc-scroll-x {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-left: var(--vc-fade);
+  padding-right: var(--vc-fade);
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 var(--vc-fade),
+    #000 calc(100% - var(--vc-fade)),
+    transparent 100%
+  );
+}

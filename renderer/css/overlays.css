@@ -1,0 +1,287 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   VECTOR — overlays
+   Tooltip, menú, modal, toast y command palette. Todos portaleados a #vc-layer,
+   todos con entrada Y salida (nada se corta al cerrarse), todos propios: ni un
+   title= nativo, ni un confirm() del sistema.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+#vc-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+}
+#vc-layer > * { pointer-events: auto; }
+
+/* ── Tooltip ─────────────────────────────────────────────────────────────────
+   Reemplaza al title= nativo (amarillo, lento, inestilable). Se declara con
+   data-tip / data-tip-side y lo maneja tooltip.js. */
+.vc-tooltip {
+  position: absolute;
+  max-width: 260px;
+  padding: 5px var(--vc-2);
+  border-radius: var(--vc-r-sm);
+  background: var(--vc-s4);
+  color: var(--vc-text);
+  font-size: var(--vc-fs-11);
+  line-height: 1.45;
+  box-shadow: var(--vc-hairline), var(--vc-e3);
+  animation: vc-pop-in var(--vc-t-2) var(--vc-ease) both;
+  will-change: transform, opacity;
+}
+.vc-tooltip[data-state='closing'] { animation: vc-pop-out 100ms var(--vc-ease-in) both; }
+.vc-tooltip__key { margin-left: var(--vc-2); color: var(--vc-text-4); }
+
+/* ── Menú contextual / dropdown ──────────────────────────────────────────── */
+/* Los overlays que scrollean también se esfuman: la regla del corte-nunca no
+   se suspende porque la superficie sea chica. Cada uno lleva un fade a su
+   escala, y su padding vertical lo iguala para que en reposo no coma ítems. */
+.vc-menu.vc-scroll,
+.vc-palette__list,
+.vc-modal__body.vc-scroll { overflow-x: hidden; }
+.vc-menu.vc-scroll        { --vc-fade: 10px; padding-top: 10px; padding-bottom: 10px; }
+.vc-palette__list         { --vc-fade: 18px; padding-top: 18px; padding-bottom: 18px; }
+.vc-modal__body.vc-scroll { --vc-fade: 20px; padding-top: 20px; padding-bottom: 20px; }
+
+.vc-menu {
+  position: absolute;
+  min-width: 180px;
+  max-height: 60vh;
+  padding: var(--vc-1);
+  border-radius: var(--vc-r-md);
+  background: var(--vc-s3);
+  box-shadow: var(--vc-hairline), var(--vc-e4);
+  overflow-y: auto;
+  animation: vc-pop-in var(--vc-t-2) var(--vc-ease) both;
+  transform-origin: var(--origin, top left);
+}
+.vc-menu[data-state='closing'] { animation: vc-pop-out 110ms var(--vc-ease-in) both; }
+.vc-menuitem {
+  display: flex;
+  align-items: center;
+  gap: var(--vc-3);
+  width: 100%;
+  height: 28px;
+  padding: 0 var(--vc-2);
+  border: 0;
+  border-radius: var(--vc-r-sm);
+  background: transparent;
+  color: var(--vc-text-2);
+  font-size: var(--vc-fs-12);
+  text-align: left;
+  cursor: default;
+  transition: var(--tr-color);
+}
+.vc-menuitem .vc-icon { width: 14px; height: 14px; color: var(--vc-text-4); transition: color var(--vc-t-1) var(--vc-ease-soft); }
+.vc-menuitem:hover, .vc-menuitem.is-active { background: var(--vc-wash-2); color: var(--vc-text); }
+.vc-menuitem:hover .vc-icon, .vc-menuitem.is-active .vc-icon { color: var(--vc-text-2); }
+.vc-menuitem.is-selected .vc-icon:last-child { color: var(--vc-accent); }
+.vc-menuitem--danger { color: var(--vc-danger); }
+.vc-menuitem--danger .vc-icon { color: var(--vc-danger); }
+.vc-menuitem--danger:hover { background: var(--vc-danger-wash); color: var(--vc-danger); }
+.vc-menuitem__key { margin-left: auto; font-size: var(--vc-fs-10); color: var(--vc-text-4); }
+.vc-menu__sep { height: 1px; margin: var(--vc-1) var(--vc-2); background: var(--vc-line); }
+.vc-menu__label {
+  padding: var(--vc-2) var(--vc-2) var(--vc-1);
+  font-size: var(--vc-fs-10);
+  font-weight: var(--vc-w-semi);
+  letter-spacing: var(--vc-track-caps);
+  text-transform: uppercase;
+  color: var(--vc-text-4);
+}
+
+/* ── Modal ───────────────────────────────────────────────────────────────── */
+.vc-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 5, 6, .62);
+  backdrop-filter: blur(2px);
+  animation: vc-fade-in var(--vc-t-3) var(--vc-ease) both;
+}
+.vc-scrim[data-state='closing'] { animation: vc-fade-out var(--vc-t-2) var(--vc-ease-in) both; }
+
+/* El wrapper de la animación es TAMBIÉN el que centra, y esto no es un capricho
+   de estilo: es la única forma de que no se rompa.
+
+   Antes el modal se centraba solo con `position:fixed` + `top:50%` +
+   `translate(-50%,-50%)`, y el wrapper era un div suelto solo para animar. Pero
+   ese wrapper tiene alto 0 (su único hijo estaba fuera de flujo) y —por
+   `animation-fill-mode: both`— conserva un transform computado para siempre,
+   aunque sea la identidad. Un elemento con transform es bloque contenedor de
+   sus descendientes `fixed`, así que ese `top:50%` se resolvía contra 0 px de
+   alto y el modal terminaba medio cuerpo arriba del borde de la ventana.
+
+   Centrando con grid no hay porcentajes que resolver contra nada. */
+.vc-modal__anim {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  animation: vc-lift-in var(--vc-t-3) var(--vc-ease) both;
+}
+/* El wrapper cubre toda la ventana, así que tiene que dejar pasar el click al
+   scrim de abajo; solo el modal en sí lo intercepta. */
+#vc-layer > .vc-modal__anim { pointer-events: none; }
+
+.vc-modal {
+  position: relative;
+  pointer-events: auto;
+  width: min(520px, calc(100vw - 96px));
+  max-height: calc(100vh - 120px);
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  border-radius: var(--vc-r-xl);
+  background: var(--vc-s3);
+  box-shadow: var(--vc-hairline), var(--vc-e4);
+  overflow: hidden;
+}
+.vc-modal__anim[data-state='closing'] { animation: vc-lift-out var(--vc-t-2) var(--vc-ease-in) both; }
+.vc-modal__head { padding: var(--vc-5) var(--vc-5) var(--vc-3); display: flex; align-items: flex-start; gap: var(--vc-3); }
+.vc-modal__title { font-size: var(--vc-fs-15); font-weight: var(--vc-w-semi); letter-spacing: var(--vc-track-tight); }
+.vc-modal__sub { font-size: var(--vc-fs-12); color: var(--vc-text-3); margin-top: 4px; line-height: var(--vc-lh-loose); }
+.vc-modal__body { padding: 0 var(--vc-5) var(--vc-5); overflow-y: auto; min-height: 0; }
+.vc-modal__foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--vc-2);
+  padding: var(--vc-3) var(--vc-5);
+  background: var(--vc-s2);
+  box-shadow: inset 0 1px 0 var(--vc-line);
+}
+
+/* ── Toasts ──────────────────────────────────────────────────────────────── */
+.vc-toasts {
+  position: absolute;
+  right: var(--vc-5);
+  bottom: calc(var(--vc-statusbar) + var(--vc-4));
+  display: flex;
+  flex-direction: column-reverse;
+  gap: var(--vc-2);
+  width: 320px;
+}
+.vc-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--vc-3);
+  padding: var(--vc-3);
+  border-radius: var(--vc-r-md);
+  background: var(--vc-s3);
+  box-shadow: var(--vc-hairline), var(--vc-e4);
+  animation: vc-slide-in-r var(--vc-t-3) var(--vc-ease) both;
+  overflow: hidden;
+  position: relative;
+}
+.vc-toast[data-state='closing'] { animation: vc-slide-out-r var(--vc-t-2) var(--vc-ease-in) both; }
+.vc-toast > .vc-icon { color: var(--vc-text-3); margin-top: 1px; }
+.vc-toast__main { flex: 1 1 auto; min-width: 0; }
+.vc-toast__title { font-size: var(--vc-fs-12); font-weight: var(--vc-w-medium); color: var(--vc-text); }
+.vc-toast__text { font-size: var(--vc-fs-11); color: var(--vc-text-3); margin-top: 2px; line-height: var(--vc-lh); user-select: text; }
+.vc-toast--error > .vc-icon { color: var(--vc-danger); }
+.vc-toast--error { box-shadow: inset 0 0 0 1px var(--vc-danger-ring), var(--vc-e4); }
+/* La barra de vida: se consume sola y muestra cuánto le queda. */
+.vc-toast__life {
+  position: absolute;
+  left: 0; bottom: 0;
+  height: 1.5px;
+  width: 100%;
+  background: var(--vc-line-3);
+  transform-origin: left;
+  animation: vc-toast-life var(--life, 4000ms) linear forwards;
+}
+.vc-toast--error .vc-toast__life { background: var(--vc-danger-ring); }
+@keyframes vc-toast-life { from { transform: scaleX(1) } to { transform: scaleX(0) } }
+
+/* ── Command palette ─────────────────────────────────────────────────────────
+   El centro de mando de la app. Es la superficie más alta del sistema (s4). */
+/* Mismo patrón que el modal: el wrapper posiciona y anima. Acá el bug no se
+   veía —`top:14vh` es relativo a la ventana pase lo que pase— pero la trampa
+   estaba armada igual, esperando a que alguien cambiara ese 14vh por un %. */
+.vc-palette__anim {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  justify-items: center;
+  align-items: start;
+  padding-top: 14vh;
+  animation: vc-lift-in var(--vc-t-3) var(--vc-ease) both;
+}
+#vc-layer > .vc-palette__anim { pointer-events: none; }
+
+.vc-palette {
+  position: relative;
+  pointer-events: auto;
+  width: min(560px, calc(100vw - 96px));
+  max-height: 56vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--vc-r-lg);
+  background: var(--vc-s4);
+  box-shadow: var(--vc-hairline), var(--vc-e4);
+  overflow: hidden;
+}
+.vc-palette__anim[data-state='closing'] { animation: vc-lift-out var(--vc-t-2) var(--vc-ease-in) both; }
+.vc-palette__search {
+  display: flex;
+  align-items: center;
+  gap: var(--vc-3);
+  padding: var(--vc-3) var(--vc-4);
+  box-shadow: inset 0 -1px 0 var(--vc-line);
+  flex: 0 0 auto;
+}
+.vc-palette__search > .vc-icon { color: var(--vc-text-4); }
+.vc-palette__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--vc-text);
+  font-size: var(--vc-fs-15);
+  user-select: text;
+  cursor: text;
+}
+.vc-palette__input::placeholder { color: var(--vc-text-4); }
+.vc-palette__input:focus-visible { box-shadow: none; }
+.vc-palette__list { flex: 1 1 auto; min-height: 0; padding-left: var(--vc-2); padding-right: var(--vc-2); }
+.vc-palette__group {
+  padding: var(--vc-2) var(--vc-2) var(--vc-1);
+  font-size: var(--vc-fs-10);
+  font-weight: var(--vc-w-semi);
+  letter-spacing: var(--vc-track-caps);
+  text-transform: uppercase;
+  color: var(--vc-text-4);
+}
+.vc-palette__item {
+  display: flex;
+  align-items: center;
+  gap: var(--vc-3);
+  width: 100%;
+  height: 34px;
+  padding: 0 var(--vc-2);
+  border: 0;
+  border-radius: var(--vc-r-sm);
+  background: transparent;
+  color: var(--vc-text-2);
+  font-size: var(--vc-fs-13);
+  text-align: left;
+  cursor: default;
+  transition: var(--tr-color);
+}
+.vc-palette__item .vc-icon { width: 15px; height: 15px; color: var(--vc-text-4); transition: color var(--vc-t-1) var(--vc-ease-soft); }
+.vc-palette__item.is-active { background: var(--vc-wash-2); color: var(--vc-text); }
+.vc-palette__item.is-active .vc-icon { color: var(--vc-accent); }
+.vc-palette__item__hint { margin-left: auto; font-size: var(--vc-fs-10); color: var(--vc-text-4); }
+/* Lo que hace match con lo tipeado se ILUMINA, no se pinta de amarillo. */
+.vc-palette__item mark { background: transparent; color: var(--vc-accent); font-weight: var(--vc-w-semi); }
+.vc-palette__foot {
+  display: flex;
+  align-items: center;
+  gap: var(--vc-4);
+  padding: var(--vc-2) var(--vc-4);
+  box-shadow: inset 0 1px 0 var(--vc-line);
+  font-size: var(--vc-fs-10);
+  color: var(--vc-text-4);
+  flex: 0 0 auto;
+}
+.vc-palette__foot .vc-row { gap: var(--vc-1); }

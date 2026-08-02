@@ -1,0 +1,162 @@
+{
+  "id": "research-digest",
+  "name": "Research Digest",
+  "desc": "Barre feeds, filtra por relevancia, lee en profundidad y arma el resumen diario.",
+  "version": 1,
+  "schedule": {
+    "enabled": false,
+    "kind": "daily",
+    "at": "07:00"
+  },
+  "retries": 0,
+  "input": {
+    "query": "novedades de la semana en modelos locales"
+  },
+  "nodes": [
+    {
+      "id": "src",
+      "kind": "input",
+      "title": "Fuentes",
+      "sub": "12 feeds RSS",
+      "x": 40,
+      "y": 420
+    },
+    {
+      "id": "triage",
+      "kind": "agent",
+      "title": "Triage",
+      "agent": "triage",
+      "prompt": "Clasificá estos resultados para la consulta: {{input.query}}\n\nDevolvé JSON con \"score\" (0 a 1) e \"items\" (lista de títulos).",
+      "x": 336,
+      "y": 420,
+      "mock": {
+        "delayMs": 900,
+        "json": {
+          "score": 0.82,
+          "kept": 6,
+          "items": [
+            "Escalado de contexto largo en modelos abiertos",
+            "Cuantización de 4 bits sin pérdida medible",
+            "Enrutamiento de agentes por costo",
+            "Memoria episódica en asistentes personales",
+            "Evaluación adversarial de resúmenes",
+            "Inferencia local en GPUs de consumo"
+          ]
+        }
+      }
+    },
+    {
+      "id": "gate",
+      "kind": "branch",
+      "title": "¿Relevante?",
+      "sub": "score ≥ 0.7",
+      "when": "steps.triage.json.score >= 0.7",
+      "x": 632,
+      "y": 420
+    },
+    {
+      "id": "deep",
+      "kind": "fanout",
+      "title": "Lectura profunda",
+      "agent": "reader",
+      "over": "{{steps.triage.json.items | json}}",
+      "prompt": "Leé en profundidad y extraé tesis, evidencia y contradicciones de:\n{{item}}",
+      "concurrency": 3,
+      "itemErrors": "skip",
+      "x": 928,
+      "y": 320,
+      "mock": {
+        "delayMs": 1300,
+        "output": "Tesis principal, evidencia citada y una contradicción sin resolver."
+      }
+    },
+    {
+      "id": "archive",
+      "kind": "output",
+      "title": "Archivar",
+      "sub": "descartados",
+      "from": "{{steps.triage.output}}",
+      "x": 928,
+      "y": 520
+    },
+    {
+      "id": "synth",
+      "kind": "agent",
+      "title": "Síntesis",
+      "agent": "synth",
+      "prompt": "Escribí el resumen del día cruzando estas lecturas:\n\n{{steps.deep.output}}",
+      "retries": 2,
+      "x": 1224,
+      "y": 320,
+      "mock": {
+        "delayMs": 1100,
+        "failTimes": 1,
+        "output": "Resumen del día: seis lecturas cruzadas, dos tesis convergentes y una contradicción abierta sobre cuantización."
+      }
+    },
+    {
+      "id": "check",
+      "kind": "branch",
+      "title": "¿Pasa control?",
+      "sub": "tiene resumen",
+      "when": "steps.synth.output contains 'Resumen'",
+      "allowDeadEnd": true,
+      "x": 1520,
+      "y": 320
+    },
+    {
+      "id": "publish",
+      "kind": "output",
+      "title": "Publicar",
+      "sub": "markdown + mail",
+      "from": "{{steps.synth.output}}",
+      "x": 1520,
+      "y": 520
+    }
+  ],
+  "edges": [
+    {
+      "from": "src",
+      "to": "triage"
+    },
+    {
+      "from": "triage",
+      "to": "gate"
+    },
+    {
+      "from": "gate",
+      "to": "deep",
+      "branch": true,
+      "label": "sí"
+    },
+    {
+      "from": "gate",
+      "to": "archive",
+      "branch": false,
+      "label": "no"
+    },
+    {
+      "from": "deep",
+      "to": "synth"
+    },
+    {
+      "from": "synth",
+      "to": "check"
+    },
+    {
+      "from": "check",
+      "to": "publish",
+      "branch": true,
+      "label": "aprobado"
+    }
+  ],
+  "groups": [
+    {
+      "id": "g-fanout",
+      "label": "fan-out ×6",
+      "nodes": [
+        "deep"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,179 @@
+{
+  "id": "revision-de-codigo",
+  "name": "Revisión de código",
+  "desc": "Lee un archivo, lo revisa en paralelo con tres lentes independientes, fusiona los hallazgos y espera tu visto bueno antes de guardar el informe.",
+  "version": 1,
+  "schedule": {
+    "enabled": false,
+    "kind": "daily",
+    "at": "09:00"
+  },
+  "retries": 1,
+  "input": {
+    "archivo": "Vector/src/engine/expr.js",
+    "salida": "_revisiones/expr.md"
+  },
+  "nodes": [
+    {
+      "id": "entrada",
+      "kind": "input",
+      "title": "Entrada",
+      "sub": "archivo y destino",
+      "x": 40,
+      "y": 420
+    },
+    {
+      "id": "revisar",
+      "kind": "fanout",
+      "title": "Revisar",
+      "sub": "3 lentes",
+      "agent": "revisor",
+      "over": "[\"correctitud: bugs reales, casos borde no contemplados, condiciones de carrera, errores que se tragan en silencio\",\"simplificación: código muerto, duplicación, abstracciones de más, complejidad que no paga lo que cuesta\",\"claridad: nombres que mienten, comentarios desactualizados, intención que no se entiende sin leer tres veces\"]",
+      "concurrency": 3,
+      "itemErrors": "skip",
+      "tools": [
+        "read_file",
+        "list_dir"
+      ],
+      "timeoutMs": 180000,
+      "prompt": "Revisá un archivo de código desde UNA lente específica.\n\nArchivo: {{input.archivo}}\nTu lente: {{item}}\n\nLeelo con read_file. Si no lo encontrás, usá list_dir sobre la carpeta que lo contiene\npara ubicarlo antes de rendirte.\n\nRevisalo SOLO desde tu lente — lo que caiga fuera lo mira otro revisor, no es tu problema.\nPor cada hallazgo dame:\n  · el número de línea\n  · qué está mal, en una oración\n  · por qué importa: qué se rompe, o qué cuesta de más\n\nSi desde tu lente el archivo está bien, respondé exactamente: SIN HALLAZGOS\nNo completes la lista con cosas menores para que no quede vacía.",
+      "x": 336,
+      "y": 420,
+      "mock": {
+        "delayMs": 900,
+        "toolCalls": [
+          {
+            "name": "read_file",
+            "args": {
+              "path": "Vector/src/engine/expr.js"
+            }
+          }
+        ],
+        "output": "L42 · El operador `in` compara con `includes` sobre texto: \"ab\" in \"cabra\" da verdadero sin querer. Importa porque una condición de rama puede tomar el camino equivocado en silencio."
+      }
+    },
+    {
+      "id": "sintetizar",
+      "kind": "agent",
+      "title": "Sintetizar",
+      "agent": "editor",
+      "timeoutMs": 180000,
+      "prompt": "Recibiste tres revisiones independientes del archivo {{input.archivo}}, cada una hecha\ncon una lente distinta y sin ver a las otras:\n\n{{steps.revisar.output}}\n\nArmá UN informe en markdown:\n  · fusioná los hallazgos que son el mismo problema dicho de dos formas\n  · ordenalos por gravedad real, no por el orden en que llegaron\n  · descartá lo que sea preferencia sin consecuencia\n  · encabezá con una línea de veredicto: cuántos hallazgos y de qué peso\n\nSi las tres revisiones dijeron SIN HALLAZGOS, respondé exactamente: SIN HALLAZGOS",
+      "x": 632,
+      "y": 420,
+      "mock": {
+        "delayMs": 800,
+        "output": "# Revisión\n\n**1 hallazgo de peso medio.**\n\n## L42 — el operador `in` sobre texto\nCompara con `includes`, así que \"ab\" in \"cabra\" da verdadero. Una condición de rama puede irse por el camino equivocado sin avisar."
+      }
+    },
+    {
+      "id": "hay-hallazgos",
+      "kind": "branch",
+      "title": "¿Hay hallazgos?",
+      "when": "!(steps.sintetizar.output contains 'SIN HALLAZGOS')",
+      "x": 928,
+      "y": 420
+    },
+    {
+      "id": "revision",
+      "kind": "approval",
+      "title": "Tu visto bueno",
+      "sub": "antes de guardar",
+      "question": "¿Guardo este informe de {{input.archivo}}?",
+      "preview": "{{steps.sintetizar.output}}",
+      "allowDeadEnd": true,
+      "x": 1224,
+      "y": 300
+    },
+    {
+      "id": "guardar",
+      "kind": "agent",
+      "title": "Guardar informe",
+      "agent": "escriba",
+      "tools": [
+        "write_file"
+      ],
+      "prompt": "Guardá este informe con write_file en la ruta exacta: {{input.salida}}\n\n{{steps.sintetizar.output}}\n\nDespués confirmá en una línea qué guardaste y dónde.",
+      "x": 1520,
+      "y": 300,
+      "mock": {
+        "delayMs": 500,
+        "toolCalls": [
+          {
+            "name": "write_file",
+            "args": {
+              "path": "_revisiones/expr.md",
+              "content": "# Revisión\n\n1 hallazgo."
+            }
+          }
+        ],
+        "output": "Informe guardado en _revisiones/expr.md"
+      }
+    },
+    {
+      "id": "listo",
+      "kind": "output",
+      "title": "Listo",
+      "from": "{{steps.guardar.output}}",
+      "x": 1816,
+      "y": 300
+    },
+    {
+      "id": "limpio",
+      "kind": "output",
+      "title": "Sin hallazgos",
+      "from": "El archivo {{input.archivo}} pasó las tres lentes sin observaciones.",
+      "x": 1224,
+      "y": 540
+    }
+  ],
+  "edges": [
+    {
+      "from": "entrada",
+      "to": "revisar"
+    },
+    {
+      "from": "revisar",
+      "to": "sintetizar"
+    },
+    {
+      "from": "sintetizar",
+      "to": "hay-hallazgos"
+    },
+    {
+      "from": "hay-hallazgos",
+      "to": "revision",
+      "branch": true,
+      "label": "hay"
+    },
+    {
+      "from": "hay-hallazgos",
+      "to": "limpio",
+      "branch": false,
+      "label": "limpio"
+    },
+    {
+      "from": "revision",
+      "to": "guardar",
+      "branch": true,
+      "label": "aprobado"
+    },
+    {
+      "from": "guardar",
+      "to": "listo"
+    }
+  ],
+  "groups": [
+    {
+      "id": "g-lentes",
+      "label": "tres lentes en paralelo",
+      "nodes": [
+        "revisar"
+      ]
+    }
+  ],
+  "stage": {
+    "w": 2100,
+    "h": 800
+  }
+}

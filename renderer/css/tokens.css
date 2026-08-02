@@ -1,0 +1,140 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   VECTOR — tokens
+   La única fuente de verdad del sistema. Ningún componente escribe un valor
+   crudo: todo sale de acá. Cambiar el carácter de la app = cambiar este archivo.
+
+   Principio rector: la paleta es acromática. El ACENTO ES LA LUZ — lo primario
+   es lo más claro, lo terminado se apaga. El rojo es el único color del sistema
+   y aparece exclusivamente cuando algo falla.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Superficies ───────────────────────────────────────────────────────────
+     Escalera de elevación. Nunca separamos planos con bordes gruesos: el plano
+     que flota SUBE de superficie y proyecta sombra. Los grises llevan un
+     susurro de azul (hue 220) — el gris puro se lee muerto. */
+  --vc-bg:            #0a0b0d;   /* base de la ventana (= backgroundColor en main.cjs) */
+  --vc-sunken:        #070809;   /* hundido: canvas del grafo, campos, consola */
+  --vc-s1:            #0e1013;   /* rail, statusbar */
+  --vc-s2:            #14171b;   /* card, panel, fila elevada */
+  --vc-s3:            #1b1e23;   /* menú, modal, popover, tooltip */
+  --vc-s4:            #23272d;   /* command palette, lo más alto */
+
+  /* ── Hairlines ─────────────────────────────────────────────────────────────
+     Para divisores y contornos finos, no para construir jerarquía.
+     Siempre como box-shadow inset (un border real deja hilacha en las esquinas
+     redondeadas con overflow:hidden). */
+  --vc-line:          rgba(255, 255, 255, .055);
+  --vc-line-2:        rgba(255, 255, 255, .09);
+  --vc-line-3:        rgba(255, 255, 255, .15);
+
+  /* ── Texto: escalera de énfasis ────────────────────────────────────────── */
+  --vc-text:          #e9ebee;   /* primario — nunca blanco puro */
+  --vc-text-2:        #a4a9b0;   /* secundario */
+  --vc-text-3:        #6e737b;   /* muted: metadatos, labels */
+  --vc-text-4:        #4a4e56;   /* faint: deshabilitado, placeholders */
+
+  /* ── Acento = luz ──────────────────────────────────────────────────────── */
+  --vc-accent:        #f2f4f7;
+  --vc-accent-ink:    #0a0b0d;   /* tinta sobre acento */
+  --vc-wash-1:        rgba(240, 243, 247, .05);   /* hover sutil */
+  --vc-wash-2:        rgba(240, 243, 247, .09);   /* hover fuerte / seleccionado */
+  --vc-wash-3:        rgba(240, 243, 247, .15);   /* activo / presionado */
+  --vc-ring:          rgba(242, 244, 247, .55);   /* focus del teclado */
+  --vc-select:        rgba(240, 243, 247, .16);   /* ::selection */
+
+  /* ── Rojo: el único color ──────────────────────────────────────────────── */
+  --vc-danger:        #d4676b;
+  --vc-danger-dim:    #8e4045;
+  --vc-danger-wash:   rgba(212, 103, 107, .12);
+  --vc-danger-ring:   rgba(212, 103, 107, .45);
+
+  /* ── Tipografía ────────────────────────────────────────────────────────── */
+  --vc-font: 'Inter', 'Inter Variable', 'Segoe UI Variable Text', 'Segoe UI',
+             system-ui, -apple-system, sans-serif;
+  /* Empaquetada en renderer/fonts/, declarada en fonts.css. La cola es un
+     último recurso por si el .woff2 falta: con el archivo presente nunca gana. */
+  --vc-mono: 'Roboto Mono', ui-monospace, monospace;
+
+  --vc-fs-10:  10px;   /* eyebrow / caps */
+  --vc-fs-11:  11px;   /* metadatos, statusbar */
+  --vc-fs-12:  12px;   /* labels, secundario */
+  --vc-fs-13:  13px;   /* base de la UI */
+  --vc-fs-15:  15px;   /* título de panel */
+  --vc-fs-19:  19px;   /* título de vista */
+  --vc-fs-26:  26px;   /* display */
+
+  --vc-lh-tight: 1.25;
+  --vc-lh:       1.5;
+  --vc-lh-loose: 1.65;
+
+  --vc-w-regular: 400;
+  --vc-w-medium:  500;
+  --vc-w-semi:    600;
+
+  /* Tracking: negativo en lo grande, generoso en las versalitas.
+     Es el detalle silencioso que separa "editorial" de "bootstrap". */
+  --vc-track-tight:  -.014em;
+  --vc-track-normal:  0;
+  --vc-track-caps:    .13em;
+
+  /* ── Espaciado (escala de 4) ───────────────────────────────────────────── */
+  --vc-1:   4px;
+  --vc-2:   8px;
+  --vc-3:  12px;
+  --vc-4:  16px;
+  --vc-5:  20px;
+  --vc-6:  24px;
+  --vc-7:  32px;
+  --vc-8:  40px;
+  --vc-9:  56px;
+  --vc-10: 72px;
+
+  /* ── Radios: apenas redondeado ─────────────────────────────────────────── */
+  --vc-r-xs:   4px;
+  --vc-r-sm:   6px;
+  --vc-r-md:   8px;
+  --vc-r-lg:  12px;
+  --vc-r-xl:  16px;
+  --vc-r-pill: 999px;
+
+  /* ── Elevación ─────────────────────────────────────────────────────────── */
+  --vc-e1: 0 1px 2px rgba(0, 0, 0, .35);
+  --vc-e2: 0 1px 2px rgba(0, 0, 0, .40), 0 4px 12px rgba(0, 0, 0, .32);
+  --vc-e3: 0 2px 4px rgba(0, 0, 0, .45), 0 10px 30px rgba(0, 0, 0, .45);
+  --vc-e4: 0 3px 8px rgba(0, 0, 0, .50), 0 20px 56px rgba(0, 0, 0, .58);
+  /* Contorno fino combinable con cualquier elevación */
+  --vc-hairline: inset 0 0 0 1px var(--vc-line);
+
+  /* ── Movimiento ────────────────────────────────────────────────────────────
+     Vector se mueve con seguridad: sale rápido, frena largo. Nada rebota. */
+  --vc-ease:      cubic-bezier(.16, 1, .3, 1);     /* expo-out: el default */
+  --vc-ease-soft: cubic-bezier(.33, 1, .68, 1);    /* cubic-out: micro-hovers */
+  --vc-ease-both: cubic-bezier(.65, 0, .35, 1);    /* in-out: lo que va y vuelve */
+  --vc-ease-in:   cubic-bezier(.55, 0, 1, .45);    /* salidas */
+
+  --vc-t-1: 110ms;   /* hover, color */
+  --vc-t-2: 180ms;   /* el default */
+  --vc-t-3: 280ms;   /* entradas de overlay */
+  --vc-t-4: 420ms;   /* transiciones de vista */
+
+  /* Transiciones nombradas: se componen, nunca se escribe `transition: all` */
+  --tr-color:   color var(--vc-t-1) var(--vc-ease-soft),
+                background-color var(--vc-t-1) var(--vc-ease-soft),
+                box-shadow var(--vc-t-1) var(--vc-ease-soft);
+  --tr-move:    transform var(--vc-t-2) var(--vc-ease);
+  --tr-fade:    opacity var(--vc-t-2) var(--vc-ease-soft);
+  --tr-surface: background-color var(--vc-t-2) var(--vc-ease-soft),
+                box-shadow var(--vc-t-2) var(--vc-ease),
+                transform var(--vc-t-2) var(--vc-ease);
+
+  /* ── Geometría del layout ──────────────────────────────────────────────── */
+  --vc-titlebar:  38px;
+  --vc-statusbar: 26px;
+  --vc-rail:     224px;
+  --vc-inspector: 320px;
+
+  /* Tamaño del esfumado donde el scroll recorta. El contenedor lleva padding
+     ≥ este valor en el eje del scroll para que en reposo no coma ningún item. */
+  --vc-fade: 28px;
+}

@@ -1,0 +1,11 @@
+node_modules/
+dist/
+out/
+*.log
+.DS_Store
+
+# Datos locales. Los pipelines SÍ se versionan (son la definición del trabajo);
+# la config lleva claves cifradas y las corridas son historial de esta máquina.
+data/config.json
+data/runs/
+

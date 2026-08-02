@@ -1,0 +1,117 @@
+{
+  "id": "revision-con-aprobacion",
+  "name": "Revisión con aprobación",
+  "desc": "Lee un archivo real de la carpeta de trabajo, lo resume y espera tu visto bueno antes de guardarlo.",
+  "version": 1,
+  "schedule": {
+    "enabled": false,
+    "kind": "daily",
+    "at": "09:00"
+  },
+  "retries": 0,
+  "input": {
+    "archivo": "notas.md"
+  },
+  "nodes": [
+    {
+      "id": "entrada",
+      "kind": "input",
+      "sub": "archivo a leer",
+      "x": 40,
+      "y": 420
+    },
+    {
+      "id": "leer",
+      "kind": "agent",
+      "title": "Leer archivo",
+      "agent": "triage",
+      "prompt": "Leé el archivo {{input.archivo}} de la carpeta de trabajo y contame qué dice.",
+      "tools": [
+        "list_dir",
+        "read_file"
+      ],
+      "x": 336,
+      "y": 420,
+      "mock": {
+        "delayMs": 500,
+        "toolCalls": [
+          {
+            "name": "read_file",
+            "args": {
+              "path": "notas.md"
+            }
+          }
+        ],
+        "output": "El archivo tiene tres apuntes sobre modelos locales."
+      }
+    },
+    {
+      "id": "resumen",
+      "kind": "agent",
+      "title": "Resumir",
+      "agent": "synth",
+      "prompt": "Escribí un resumen de dos líneas a partir de esto:\n\n{{steps.leer.output}}",
+      "x": 632,
+      "y": 420,
+      "mock": {
+        "delayMs": 700,
+        "output": "Resumen: el costo de los modelos locales se está moviendo de cómputo a memoria, y enrutar por precio rinde más que buscar el modelo más capaz."
+      }
+    },
+    {
+      "id": "revision",
+      "kind": "approval",
+      "title": "Revisión",
+      "sub": "humana",
+      "question": "¿Guardamos este resumen?",
+      "preview": "{{steps.resumen.output}}",
+      "x": 928,
+      "y": 420
+    },
+    {
+      "id": "guardar",
+      "kind": "output",
+      "title": "Guardar",
+      "sub": "aprobado",
+      "from": "{{steps.resumen.output}}",
+      "x": 1224,
+      "y": 320
+    },
+    {
+      "id": "descartar",
+      "kind": "output",
+      "title": "Descartar",
+      "sub": "rechazado",
+      "from": "descartado por revisión",
+      "x": 1224,
+      "y": 520
+    }
+  ],
+  "edges": [
+    {
+      "from": "entrada",
+      "to": "leer"
+    },
+    {
+      "from": "leer",
+      "to": "resumen"
+    },
+    {
+      "from": "resumen",
+      "to": "revision"
+    },
+    {
+      "from": "revision",
+      "to": "guardar",
+      "branch": true,
+      "label": "aprobado"
+    },
+    {
+      "from": "revision",
+      "to": "descartar",
+      "branch": false,
+      "label": "rechazado"
+    }
+  ],
+  "groups": []
+}
