@@ -5,7 +5,7 @@
   "description": "Vector — orquestador de agentes",
   "main": "main.cjs",
   "author": "Fran",
-  "private": true,
+  "license": "MIT",
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
@@ -21,7 +21,7 @@
   "build": {
     "appId": "com.umbrovex.vector",
     "productName": "Vector",
-    "copyright": "Copyright © 2026 Umbrovex Systems. All rights reserved.",
+    "copyright": "Copyright © 2026 Umbrovex Systems",
     "directories": {
       "output": "dist",
       "buildResources": "build"
