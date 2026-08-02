@@ -5,9 +5,10 @@
    JSON atómico sobre el disco. Nada de base de datos: los pipelines son
    archivos legibles que se pueden editar a mano y versionar en git.
 
-   Los datos viven en el directorio del proyecto (`data/`), no en AppData:
-   así se ven, se abren con un editor y no dependen de dónde quedó instalada
-   la app. `VECTOR_DATA` lo puede mover.
+   En desarrollo los datos viven en el directorio del proyecto (`data/`), no en
+   AppData: así se ven, se abren con un editor y se versionan en git. Instalada
+   no puede ser ahí —el .asar es de solo lectura— y pasa a `<userData>/data`,
+   que sigue siendo una carpeta de JSONs legibles. `VECTOR_DATA` la mueve.
 
    Escritura atómica: se escribe un `.tmp`, se fuerza el flush a disco y recién
    ahí se renombra encima del original. Un corte de luz a mitad de camino deja
@@ -18,7 +19,23 @@ const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
 
-const ROOT = process.env.VECTOR_DATA || path.join(__dirname, '..', 'data');
+/* Empaquetada, `__dirname` cae adentro de app.asar y `../data` es de solo
+   lectura: cada guardado fallaría, y como el store atrapa sus errores, fallaría
+   EN SILENCIO. Por eso la app instalada escribe en <userData>/data — la misma
+   carpeta donde safeStorage ya guarda su clave maestra, así que no aparece un
+   lugar nuevo que explicar.
+
+   El require de electron va adentro del try a propósito: este módulo también se
+   carga con node pelado desde test/store.test.mjs, donde `electron` no existe. */
+function raizPorDefecto() {
+  try {
+    const { app } = require('electron');
+    if (app && app.isPackaged) return path.join(app.getPath('userData'), 'data');
+  } catch { /* node pelado: no hay electron, seguimos con la del proyecto */ }
+  return path.join(__dirname, '..', 'data');
+}
+
+const ROOT = process.env.VECTOR_DATA || raizPorDefecto();
 const DIRS = {
   root: ROOT,
   pipelines: path.join(ROOT, 'pipelines'),
